@@ -1,0 +1,41 @@
+{
+  "@@locale": "en",
+  "appTitle": "Talevra",
+  "@appTitle": {
+    "description": "Application display name shown on the home screen"
+  },
+  "homeTab": "Home",
+  "@homeTab": {
+    "description": "Bottom navigation tab: home"
+  },
+  "exploreTab": "Explore",
+  "@exploreTab": {
+    "description": "Bottom navigation tab: explore"
+  },
+  "libraryTab": "Library",
+  "@libraryTab": {
+    "description": "Bottom navigation tab: library"
+  },
+  "settingsTab": "Settings",
+  "@settingsTab": {
+    "description": "Bottom navigation tab: settings"
+  },
+  "welcomeMessage": "Welcome to Talevra - {brand} edition",
+  "@welcomeMessage": {
+    "description": "Welcome line shown on the home tab, with the running brand code",
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      }
+    }
+  },
+  "currentLocale": "Locale: {locale}",
+  "@currentLocale": {
+    "description": "Shows the active locale code for debugging",
+    "placeholders": {
+      "locale": {
+        "type": "String"
+      }
+    }
+  }
+}

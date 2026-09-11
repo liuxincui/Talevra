@@ -1,0 +1,10 @@
+{
+  "@@locale": "ko",
+  "appTitle": "Talevra",
+  "homeTab": "홈",
+  "exploreTab": "탐색",
+  "libraryTab": "라이브러리",
+  "settingsTab": "설정",
+  "welcomeMessage": "Talevra에 오신 것을 환영합니다 - {brand} 버전",
+  "currentLocale": "언어: {locale}"
+}

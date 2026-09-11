@@ -1,0 +1,10 @@
+{
+  "@@locale": "pt",
+  "appTitle": "Talevra",
+  "homeTab": "Início",
+  "exploreTab": "Explorar",
+  "libraryTab": "Biblioteca",
+  "settingsTab": "Configurações",
+  "welcomeMessage": "Bem-vindo ao Talevra - edição {brand}",
+  "currentLocale": "Idioma: {locale}"
+}

@@ -1,0 +1,10 @@
+{
+  "@@locale": "id",
+  "appTitle": "Talevra",
+  "homeTab": "Beranda",
+  "exploreTab": "Jelajahi",
+  "libraryTab": "Pustaka",
+  "settingsTab": "Pengaturan",
+  "welcomeMessage": "Selamat datang di Talevra - edisi {brand}",
+  "currentLocale": "Bahasa: {locale}"
+}

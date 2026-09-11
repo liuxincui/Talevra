@@ -1,0 +1,10 @@
+{
+  "@@locale": "ja",
+  "appTitle": "Talevra",
+  "homeTab": "ホーム",
+  "exploreTab": "発見",
+  "libraryTab": "ライブラリ",
+  "settingsTab": "設定",
+  "welcomeMessage": "Talevra へようこそ - {brand} 版",
+  "currentLocale": "言語：{locale}"
+}

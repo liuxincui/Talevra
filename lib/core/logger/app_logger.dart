@@ -11,12 +11,7 @@ class AppLogger {
   static void i(Object? msg, {String? tag}) =>
       _log('I', tag ?? 'App', msg, always: false);
 
-  static void e(
-    Object? msg, {
-    Object? error,
-    StackTrace? stack,
-    String? tag,
-  }) {
+  static void e(Object? msg, {Object? error, StackTrace? stack, String? tag}) {
     _log('E', tag ?? 'App', msg, always: true);
     if (error != null) _log('E', tag ?? 'App', error, always: true);
     if (stack != null) _log('E', tag ?? 'App', stack, always: true);

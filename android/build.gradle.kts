@@ -2,6 +2,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://artifact.bytedance.com/repository/Volcengine/") }
+        maven { url = uri("https://artifact.byteplus.com/repository/public/") }
     }
 }
 

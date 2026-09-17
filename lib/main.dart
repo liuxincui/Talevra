@@ -7,6 +7,8 @@ import 'package:talevra/core/network/api_client.dart';
 import 'package:talevra/core/storage/local_storage.dart';
 import 'package:talevra/l10n/app_localizations.dart';
 
+final localeOverrideNotifier = ValueNotifier<Locale?>(null);
+
 /// 通用品牌 App：由各品牌入口（main_brand_*.dart）注入
 /// [brandCode] + [supportedLocales] + [defaultLocale]，实现"不同品牌启用不同语种"。
 /// 内部接入路由、主题、本地化、provider。
@@ -23,21 +25,22 @@ class TalevraApp extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ProviderScope(
+  Widget build(BuildContext context) => ValueListenableBuilder<Locale?>(
+    valueListenable: localeOverrideNotifier,
+    builder: (context, selectedLocale, _) => ProviderScope(
       overrides: [brandCodeProvider.overrideWithValue(brandCode)],
       child: MaterialApp.router(
         title: 'Talevra',
         debugShowCheckedModeBanner: false,
-        locale: defaultLocale,
-        supportedLocales: supportedLocales,
+        locale: selectedLocale ?? defaultLocale,
+        supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
         routerConfig: AppRouter.config,
       ),
-    );
-  }
+    ),
+  );
 }
 
 /// 应用启动初始化钩子：网络层 + 本地存储。在各品牌入口的 main() 中
@@ -48,5 +51,7 @@ class AppInitializer {
     WidgetsFlutterBinding.ensureInitialized();
     ApiClient.init();
     await LocalStorage.init();
+    final code = LocalStorage.I.getString('settings.locale');
+    localeOverrideNotifier.value = code == null ? null : Locale(code);
   }
 }

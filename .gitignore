@@ -50,3 +50,11 @@ app.*.map.json
 *.keystore
 *.jks
 key.properties
+
+# Vendor SDK credentials and licensed assets
+/android/app/src/main/assets/*.lic
+/android/app/*-upload-cert.pem
+
+# Release packages, mappings, and symbol archives are stored outside Git
+/release/
+/android/build/

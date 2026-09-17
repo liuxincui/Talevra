@@ -1,30 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:talevra/app/theme/app_theme.dart';
 import 'package:talevra/features/home/home_tab.dart';
 import 'package:talevra/features/library/library_page.dart';
 import 'package:talevra/features/settings/settings_page.dart';
+import 'package:talevra/features/earning/earning_page.dart';
 import 'package:talevra/l10n/app_localizations.dart';
 
-/// 首页外壳：底部三 tab（首页 / 书库 / 设置），各 tab 子页内嵌。
+/// Five-entry consumer shell matching the researched short-drama structure.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final int initialTab;
+
+  const HomePage({super.key, this.initialTab = 0});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  int _index = 0;
-  final List<Widget> _tabs = const [HomeTab(), LibraryPage(), SettingsPage()];
+  late int _index;
+  final List<Widget> _tabs = const [
+    HomeTab(),
+    EarningPage(),
+    LibraryPage(),
+    SettingsPage(),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialTab.clamp(0, _tabs.length - 1);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTab != widget.initialTab) {
+      _index = widget.initialTab.clamp(0, _tabs.length - 1);
+    }
+  }
+
+  void _select(int index) {
+    if (index == 1) {
+      context.push('/player/featured');
+      return;
+    }
+    setState(() => _index = index > 1 ? index - 1 : index);
+  }
+
+  int get _selectedDestination => _index == 0 ? 0 : _index + 1;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(l.appTitle)),
       body: IndexedStack(index: _index, children: _tabs),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        selectedIndex: _selectedDestination,
+        onDestinationSelected: _select,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
@@ -32,14 +65,24 @@ class _HomePageState extends State<HomePage> {
             label: l.homeTab,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.library_books_outlined),
-            selectedIcon: const Icon(Icons.library_books),
-            label: l.libraryTab,
+            icon: const Icon(Icons.smart_display_outlined),
+            selectedIcon: const Icon(Icons.smart_display, color: Colors.white),
+            label: l.shortsTab,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.settings_outlined),
-            selectedIcon: const Icon(Icons.settings),
-            label: l.settingsTab,
+            icon: const Icon(Icons.paid_outlined),
+            selectedIcon: const Icon(Icons.paid, color: AppPalette.yellow),
+            label: l.rewardsTab,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.favorite_border_rounded),
+            selectedIcon: const Icon(Icons.favorite, color: Colors.white),
+            label: l.history,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.account_circle_outlined),
+            selectedIcon: const Icon(Icons.account_circle, color: Colors.white),
+            label: l.profileTab,
           ),
         ],
       ),

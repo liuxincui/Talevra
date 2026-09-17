@@ -5,9 +5,11 @@ import 'package:talevra/main.dart';
 /// 运行：flutter run --flavor brand_mx -t lib/main_brand_mx.dart
 void main() async {
   await AppInitializer.init();
-  runApp(const TalevraApp(
-    brandCode: 'brand_mx',
-    supportedLocales: [Locale('es'), Locale('en')],
-    defaultLocale: Locale('es'),
-  ));
+  runApp(
+    const TalevraApp(
+      brandCode: 'brand_mx',
+      supportedLocales: [Locale('es'), Locale('en')],
+      defaultLocale: Locale('es'),
+    ),
+  );
 }

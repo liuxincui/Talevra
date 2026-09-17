@@ -32,4 +32,5 @@ class AppEnvConfig {
 
   bool get isProd => env == AppEnv.prod;
   bool get isDev => env == AppEnv.dev;
+  bool get useRequestSigning => !isDev;
 }

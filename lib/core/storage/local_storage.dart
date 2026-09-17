@@ -5,10 +5,13 @@ class LocalStorage {
   LocalStorage._();
 
   static late SharedPreferences _instance;
+  static bool _initialized = false;
 
   static Future<void> init() async {
     _instance = await SharedPreferences.getInstance();
+    _initialized = true;
   }
 
+  static bool get isInitialized => _initialized;
   static SharedPreferences get I => _instance;
 }

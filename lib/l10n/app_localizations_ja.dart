@@ -222,6 +222,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get privacyPolicy => 'プライバシーポリシー';
 
   @override
+  String get privacyOpenFailed => 'プライバシーポリシーを開けませんでした。もう一度お試しください。';
+
+  @override
   String get clearCache => 'キャッシュを削除';
 
   @override

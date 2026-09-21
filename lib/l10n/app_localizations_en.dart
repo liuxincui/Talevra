@@ -224,6 +224,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyPolicy => 'Privacy policy';
 
   @override
+  String get privacyOpenFailed =>
+      'Couldn\'t open the privacy policy. Please try again.';
+
+  @override
   String get clearCache => 'Clear cache';
 
   @override

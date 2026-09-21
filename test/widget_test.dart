@@ -1,10 +1,13 @@
 // 6 国投放冒烟测试：验证每个品牌入口的默认语种与品牌码注入正确。
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:talevra/main.dart';
 
 void main() {
+  SharedPreferences.setMockInitialValues({});
+
   group('TalevraApp 六国默认语种', () {
     const cases = <(String, List<Locale>, Locale, String)>[
       ('brand_us', [Locale('en')], Locale('en'), 'Home'),
@@ -17,12 +20,15 @@ void main() {
 
     for (final (code, locales, def, homeTab) in cases) {
       testWidgets('$code 默认 ${def.toLanguageTag()}', (tester) async {
-        await tester.pumpWidget(TalevraApp(
-          brandCode: code,
-          supportedLocales: locales,
-          defaultLocale: def,
-        ));
-        await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          TalevraApp(
+            brandCode: code,
+            supportedLocales: locales,
+            defaultLocale: def,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 1100));
+        await tester.pump(const Duration(milliseconds: 100));
         expect(find.text(homeTab), findsOneWidget, reason: '$code 首页文案');
         expect(find.textContaining(code), findsOneWidget, reason: '$code 品牌码');
       });

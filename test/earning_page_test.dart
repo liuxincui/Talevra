@@ -8,6 +8,8 @@ import 'package:talevra/features/earning/data/earning_repository.dart';
 import 'package:talevra/features/earning/data/earning_api.dart';
 import 'package:talevra/features/earning/earning_page.dart';
 import 'package:talevra/features/earning/models/earning_task.dart';
+import 'package:talevra/features/earning/models/earning_snapshot.dart';
+import 'package:talevra/features/earning/models/check_in_status.dart';
 import 'package:talevra/features/earning/models/wallet_balance.dart';
 import 'package:talevra/features/earning/models/withdrawal_level.dart';
 
@@ -16,7 +18,11 @@ class FakeEarningRepository extends EarningRepository {
   @override
   Future<EarningConfig> loadConfig(String country) async => EarningConfig.local;
   @override
-  Future<List<EarningTask>> loadTasks(String uid) async => const [
+  Future<List<EarningTask>> loadTasks(
+    String uid, {
+    EarningConfig config = EarningConfig.local,
+    String country = 'US',
+  }) async => const [
     EarningTask(
       id: 'watch-5',
       type: EarningTaskType.watchContent,
@@ -27,11 +33,24 @@ class FakeEarningRepository extends EarningRepository {
     ),
   ];
   @override
-  Future<WalletBalance> loadBalance(String uid) async =>
-      const WalletBalance(coins: 72500);
+  Future<WalletBalance> loadBalance(
+    String uid, {
+    EarningConfig config = EarningConfig.local,
+    String country = 'US',
+  }) async => const WalletBalance(coins: 72500);
   @override
   Future<List<WithdrawalLevel>> loadLevels(String country) async =>
       EarningConfig.local.defaultLevels;
+
+  @override
+  Future<EarningSnapshot> loadLocalSnapshot(
+    EarningConfig config,
+    String country,
+  ) async => EarningSnapshot(
+    wallet: const WalletBalance(coins: 72500),
+    tasks: await loadTasks(''),
+    checkIn: const CheckInStatus(),
+  );
 }
 
 void main() {

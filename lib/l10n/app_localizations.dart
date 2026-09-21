@@ -508,6 +508,12 @@ abstract class AppLocalizations {
   /// **'Privacy policy'**
   String get privacyPolicy;
 
+  /// No description provided for @privacyOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the privacy policy. Please try again.'**
+  String get privacyOpenFailed;
+
   /// No description provided for @clearCache.
   ///
   /// In en, this message translates to:

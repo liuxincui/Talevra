@@ -19,6 +19,7 @@ fun localString(name: String, defaultValue: String = ""): String =
 
 plugins {
     id("com.android.application")
+    id("com.google.gms.google-services")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -26,12 +27,13 @@ plugins {
 
 android {
     namespace = "com.talevra.talevra"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -41,10 +43,17 @@ android {
     defaultConfig {
         // The currently supplied VOD license is issued for this package.
         applicationId = "com.talevra.story"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // firebase_core requires API 23; keep the manifest contract aligned
+        // with the minimum Android version the bundled plugins can run on.
+        minSdk = 23
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            // Dramaverse/VOD supports these two ABIs. Excluding its legacy x86
+            // binaries also keeps the Play release fully 16 KB page compatible.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
         buildConfigField("String", "PSSDK_APP_ID", "\"${localString("pssdk.appId")}\"")
         buildConfigField("String", "PSSDK_VOD_APP_ID", "\"${localString("pssdk.vodAppId")}\"")
         buildConfigField("String", "PSSDK_SECURITY_KEY", "\"${localString("pssdk.securityKey")}\"")
@@ -141,11 +150,16 @@ android {
 
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-Xlint:deprecation")
+}
+
 flutter {
     source = "../.."
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.fragment:fragment:1.6.2")
     implementation("com.squareup.okhttp3:okhttp:4.2.1")

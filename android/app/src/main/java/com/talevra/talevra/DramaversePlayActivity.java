@@ -2,7 +2,9 @@ package com.talevra.talevra;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
+import android.util.SparseArray;
 import android.widget.FrameLayout;
 import android.graphics.Color;
 import android.view.Gravity;
@@ -14,16 +16,30 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ColorDrawable;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
+import android.view.ViewConfiguration;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.SeekBar;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.IntentCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.Lifecycle;
+import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.bytedance.sdk.shortplay.api.EpisodeData;
 import com.bytedance.sdk.shortplay.api.PSSDK;
@@ -31,97 +47,298 @@ import com.bytedance.sdk.shortplay.api.ShortPlay;
 import com.bytedance.sdk.shortplay.api.ShortPlayFragment;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 
-public final class DramaversePlayActivity extends FragmentActivity implements PSSDK.FeedListResultListener {
+public final class DramaversePlayActivity extends FragmentActivity {
     private static final String TAG = "DramaversePlay";
-    private static final int WATCH_REWARD_COINS = 50;
-    private static final int WATCH_REWARD_INTERVAL_SECONDS = 30;
     public static final String EXTRA_SHORT_PLAY_ID = "short_play_id";
     public static final String EXTRA_SHORT_PLAY = "short_play";
     public static final String EXTRA_LIKED = "liked";
     public static final String EXTRA_EPISODE = "episode";
     public static final String EXTRA_LANGUAGE = "language";
+    public static final String EXTRA_MODE = "mode";
+    public static final String MODE_FEED = "feed";
+    public static final String MODE_DETAIL = "detail";
     public static final String RESULT_LIKED = "result_liked";
     public static final String RESULT_EPISODE = "result_episode";
     public static final String RESULT_POSITION_MS = "result_position_ms";
     public static final String RESULT_ACTION = "result_action";
+    public static final String RESULT_DRAMA_ID = "result_drama_id";
+    public static final String RESULT_COMPLETED_EPISODES = "result_completed_episodes";
+    private static final int RANDOM_POOL_SIZE = 30;
+    private static final int HORIZONTAL_SWIPE_THRESHOLD_DP = 56;
+    private static final int VERTICAL_SWIPE_THRESHOLD_DP = 72;
+    private static final int VERTICAL_FLING_MIN_DISTANCE_DP = 24;
+    private static final int VERTICAL_FLING_VELOCITY_DP = 900;
+    private static final int FEED_CACHE_REPETITIONS = 5;
+    private FrameLayout rootContainer;
     private FrameLayout container;
+    @Nullable private ViewPager2 feedPager;
+    @Nullable private FeedPagerAdapter feedAdapter;
+    @Nullable private FrameLayout preloadedDetailContainer;
+    @Nullable private ShortPlayFragment preloadedDetailFragment;
+    @Nullable private ShortPlayFragment activePlayerFragment;
+    private long preloadedDetailDramaId = -1L;
+    private MixOverlayView fixedOverlay;
     private boolean liked;
     private int currentEpisode = 1;
-    private int currentPositionMs = 0;
+    private int currentPositionSeconds = 0;
     private String resultAction = "back";
-    private ProgressBar earningsProgress;
-    private int lastProgressEpisode = -1;
-    private TextView rewardBalance;
-    private TextView rewardNext;
-    private int coinBalance;
-    private int lastRewardBucket;
+    private boolean feedMode;
+    private boolean fragmentTransitionInProgress;
+    private boolean randomPoolLoading;
+    private boolean switchWhenPoolLoads;
+    private float gestureDownX;
+    private float gestureDownY;
+    private boolean verticalDragActive;
+    private boolean horizontalDragActive;
+    private int touchSlop;
+    private int pendingSwitchDirection;
+    @Nullable private VelocityTracker gestureVelocityTracker;
+    private ShortPlay currentDrama;
+    private final ArrayList<ShortPlay> randomDramaPool = new ArrayList<>();
+    private final ArrayList<ShortPlay> feedDramas = new ArrayList<>();
+    private final Random random = new Random();
+    private final Set<String> completedEpisodeKeys = new HashSet<>();
     private String playerLanguage = "en";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat insetsController =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (insetsController != null) {
+            insetsController.hide(WindowInsetsCompat.Type.systemBars());
+            insetsController.setSystemBarsBehavior(
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        }
+        liked = getIntent().getBooleanExtra(EXTRA_LIKED, false);
+        feedMode = MODE_FEED.equals(getIntent().getStringExtra(EXTRA_MODE));
+        playerLanguage = normalizeLanguage(getIntent().getStringExtra(EXTRA_LANGUAGE));
+        currentEpisode = Math.max(1, getIntent().getIntExtra(EXTRA_EPISODE, 1));
+        rootContainer = new FrameLayout(this);
+        rootContainer.setBackgroundColor(Color.BLACK);
         container = new FrameLayout(this);
         container.setId(R.id.dramaverse_container);
-        setContentView(container);
-        liked = getIntent().getBooleanExtra(EXTRA_LIKED, false);
-        playerLanguage = normalizeLanguage(getIntent().getStringExtra(EXTRA_LANGUAGE));
-        coinBalance = getSharedPreferences("talevra_rewards", MODE_PRIVATE)
-                .getInt("coin_balance", 0);
-        currentEpisode = Math.max(1, getIntent().getIntExtra(EXTRA_EPISODE, 1));
+        rootContainer.addView(container, new FrameLayout.LayoutParams(-1, -1));
+        fixedOverlay = new MixOverlayView(this);
+        fixedOverlay.setVisibility(View.GONE);
+        rootContainer.addView(fixedOverlay, new FrameLayout.LayoutParams(-1, -1));
+        setContentView(rootContainer);
+        touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
         showMessage(text("loading"), true);
         if (!PSSDK.hasInitialized()) {
             finishWithError(text("sdkUnavailable"));
             return;
         }
-        ShortPlay selectedDrama = getIntent().getParcelableExtra(EXTRA_SHORT_PLAY);
+        ShortPlay selectedDrama = IntentCompat.getParcelableExtra(
+                getIntent(), EXTRA_SHORT_PLAY, ShortPlay.class);
         if (selectedDrama != null) {
-            showDrama(selectedDrama);
+            showDrama(selectedDrama, false);
+            loadRandomDramaPool(false);
             return;
         }
         long selectedId = getIntent().getLongExtra(EXTRA_SHORT_PLAY_ID, -1L);
+        if (feedMode || selectedId <= 0) {
+            loadRandomDramaPool(true);
+            return;
+        }
+        loadRequestedDrama(selectedId);
+    }
+
+    private void loadRequestedDrama(long selectedId) {
         PSSDK.QueryRequestParameters query = new PSSDK.QueryRequestParameters();
         query.setIndex(1);
         query.setCount(1);
-        if (selectedId > 0) {
-            ArrayList<Long> ids = new ArrayList<>();
-            ids.add(selectedId);
-            query.setShortPlayIds(ids);
-            PSSDK.requestFeedList(query, this);
-        } else {
-            PSSDK.requestPopularDrama(query, this);
-        }
+        ArrayList<Long> ids = new ArrayList<>();
+        ids.add(selectedId);
+        query.setShortPlayIds(ids);
+        PSSDK.requestFeedList(query, new PSSDK.FeedListResultListener() {
+            @Override public void onFail(PSSDK.ErrorInfo errorInfo) {
+                Log.e(TAG, "selected drama failed: " + errorInfo);
+                finishWithError(text("feedFailed"));
+            }
+
+            @Override public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
+                if (result == null || result.dataList == null || result.dataList.isEmpty()) {
+                    finishWithError(text("noDrama"));
+                    return;
+                }
+                showDrama(result.dataList.get(0), false);
+                loadRandomDramaPool(false);
+            }
+        });
     }
 
-    @Override
-    public void onFail(PSSDK.ErrorInfo errorInfo) {
-        Log.e(TAG, "feed failed: " + errorInfo);
-        finishWithError(text("feedFailed"));
-    }
-
-    @Override
-    public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
-        if (result == null || result.dataList == null || result.dataList.isEmpty()) {
-            finishWithError(text("noDrama"));
+    private void loadRandomDramaPool(boolean showAfterLoad) {
+        if (randomPoolLoading) {
+            switchWhenPoolLoads |= showAfterLoad;
             return;
         }
-        ShortPlay shortPlay = result.dataList.get(0);
-        showDrama(shortPlay);
+        randomPoolLoading = true;
+        switchWhenPoolLoads |= showAfterLoad;
+        PSSDK.QueryRequestParameters query = new PSSDK.QueryRequestParameters();
+        query.setIndex(1);
+        query.setCount(RANDOM_POOL_SIZE);
+        PSSDK.requestPopularDrama(query, new PSSDK.FeedListResultListener() {
+            @Override public void onFail(PSSDK.ErrorInfo errorInfo) {
+                randomPoolLoading = false;
+                Log.e(TAG, "random drama pool failed: " + errorInfo);
+                if (currentDrama == null) finishWithError(text("feedFailed"));
+            }
+
+            @Override public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
+                randomPoolLoading = false;
+                randomDramaPool.clear();
+                if (result != null && result.dataList != null) {
+                    randomDramaPool.addAll(result.dataList);
+                    Collections.shuffle(randomDramaPool, random);
+                }
+                if (randomDramaPool.isEmpty()) {
+                    if (currentDrama == null) finishWithError(text("noDrama"));
+                    return;
+                }
+                boolean shouldSwitch = switchWhenPoolLoads;
+                switchWhenPoolLoads = false;
+                int switchDirection = pendingSwitchDirection;
+                pendingSwitchDirection = 0;
+                if (shouldSwitch && feedMode && currentDrama == null) {
+                    showFeedPager();
+                } else if (shouldSwitch) {
+                    switchToRandomDrama(switchDirection);
+                }
+            }
+        });
     }
 
-    private void showDrama(ShortPlay shortPlay) {
+    private void showFeedPager() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            rootContainer.post(this::showFeedPager);
+            return;
+        }
+        if (randomDramaPool.isEmpty() || feedPager != null || isFinishing()) return;
+        feedDramas.clear();
+        for (int repetition = 0; repetition < FEED_CACHE_REPETITIONS; repetition++) {
+            feedDramas.addAll(randomDramaPool);
+        }
+        if (container != null) {
+            rootContainer.removeView(container);
+            container = null;
+        }
+        ViewPager2 pager = new ViewPager2(this);
+        pager.setId(View.generateViewId());
+        pager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
+        pager.setOffscreenPageLimit(1);
+        feedPager = pager;
+        feedAdapter = new FeedPagerAdapter(this);
+        pager.setAdapter(feedAdapter);
+        pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override public void onPageSelected(int position) {
+                bindFeedPosition(position);
+            }
+        });
+        rootContainer.addView(pager, 0, new FrameLayout.LayoutParams(-1, -1));
+        int start = (FEED_CACHE_REPETITIONS / 2) * randomDramaPool.size();
+        pager.setCurrentItem(start, false);
+        bindFeedPosition(start);
+    }
+
+    private void bindFeedPosition(int position) {
+        if (!feedMode || position < 0 || position >= feedDramas.size()) return;
+        currentDrama = feedDramas.get(position);
+        currentEpisode = 1;
+        currentPositionSeconds = 0;
+        ShortPlayFragment fragment = feedAdapter == null ? null : feedAdapter.fragmentAt(position);
+        if (fragment == null) {
+            if (feedPager != null) feedPager.post(() -> bindFeedPosition(position));
+            return;
+        }
+        activePlayerFragment = fragment;
+        fixedOverlay.bindPage(fragment, currentDrama, 1);
+        fixedOverlay.setVisibility(View.VISIBLE);
+        rootContainer.post(this::prepareDetailPreload);
+    }
+
+    private void switchToRandomDrama() {
+        switchToRandomDrama(0);
+    }
+
+    private void switchToRandomDrama(int swipeDirection) {
+        if (fragmentTransitionInProgress) return;
+        if (randomDramaPool.isEmpty()) {
+            switchWhenPoolLoads = true;
+            pendingSwitchDirection = swipeDirection;
+            loadRandomDramaPool(false);
+            return;
+        }
+        ShortPlay next = pickRandomDrama();
+        if (next == null) return;
+        currentEpisode = 1;
+        currentPositionSeconds = 0;
+        pendingSwitchDirection = swipeDirection;
+        showDrama(next, true);
+    }
+
+    @Nullable
+    private ShortPlay pickRandomDrama() {
+        if (randomDramaPool.isEmpty()) return null;
+        if (randomDramaPool.size() == 1) return randomDramaPool.get(0);
+        int start = random.nextInt(randomDramaPool.size());
+        for (int offset = 0; offset < randomDramaPool.size(); offset++) {
+            ShortPlay candidate = randomDramaPool.get((start + offset) % randomDramaPool.size());
+            if (currentDrama == null || candidate.id != currentDrama.id) return candidate;
+        }
+        return randomDramaPool.get(start);
+    }
+
+    private void showDrama(ShortPlay shortPlay, boolean replacingDrama) {
+        if (isFinishing() || isDestroyed()) return;
+        ensureDetailContainer();
+        fragmentTransitionInProgress = true;
+        currentDrama = shortPlay;
+        if (replacingDrama) liked = false;
+        ShortPlayFragment fragment = createPlayerFragment(shortPlay, false, -1);
+        activePlayerFragment = fragment;
+        getSupportFragmentManager().beginTransaction()
+                .replace(container.getId(), fragment)
+                .runOnCommit(() -> {
+                    fragmentTransitionInProgress = false;
+                    fixedOverlay.bindPage(fragment, shortPlay, currentEpisode);
+                    fixedOverlay.setVisibility(View.VISIBLE);
+                    int incomingDirection = pendingSwitchDirection;
+                    pendingSwitchDirection = 0;
+                    if (replacingDrama && incomingDirection != 0) {
+                        float height = Math.max(1, container.getHeight());
+                        container.setTranslationY(-incomingDirection * height * 0.16f);
+                        container.setAlpha(0.84f);
+                        container.animate()
+                                .translationY(0f)
+                                .alpha(1f)
+                                .setDuration(220)
+                                .setInterpolator(new DecelerateInterpolator())
+                                .start();
+                    } else {
+                        container.setTranslationY(0f);
+                        container.setAlpha(1f);
+                    }
+                })
+                .commit();
+    }
+
+    private ShortPlayFragment createPlayerFragment(
+            ShortPlay shortPlay,
+            boolean singleItem,
+            int feedPosition
+    ) {
         PSSDK.DetailPageConfig config = new PSSDK.DetailPageConfig.Builder()
-                .startPlayIndex(currentEpisode)
+                .startPlayIndex(singleItem ? 1 : currentEpisode)
+                .playSingleItem(singleItem)
+                .enableAutoPlayNext(!singleItem)
                 .displayProgressBar(false)
                 .displayBottomExtraView(false)
                 .displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_TITLE, false)
@@ -131,26 +348,39 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
                     return true;
                 })
                 .build();
+        final ShortPlayFragment[] holder = new ShortPlayFragment[1];
         ShortPlayFragment fragment = PSSDK.createDetailFragment(shortPlay, config,
                 new PSSDK.ShortPlayDetailPageListener() {
-                    @Override public void onOverScroll(int direction) { }
+                    @Override public void onOverScroll(int direction) {
+                        // PSSDK reports over-scroll on the first move event, before a
+                        // meaningful drag distance is reached. Activity-level gesture
+                        // handling below supplies the threshold and follows the finger.
+                    }
                     @Override public void onProgressChange(ShortPlay p, int i, int c, int d) {
+                        if (!isActivePlayer(holder[0], feedPosition)) return;
                         currentEpisode = Math.max(1, i);
-                        currentPositionMs = Math.max(0, c);
-                        updatePlaybackChrome(p, c, d);
+                        currentPositionSeconds = Math.max(0, c);
+                        fixedOverlay.bindPage(holder[0], p, currentEpisode);
                     }
                     @Override public boolean onPlayFailed(PSSDK.ErrorInfo e) {
                         Log.e(TAG, "play failed: " + e);
-                        showSdkError(text("playFailed"), e);
+                        if (isActivePlayer(holder[0], feedPosition)) {
+                            showSdkError(text("playFailed"), e);
+                        }
                         return true;
                     }
                     @Override public void onShortPlayPlayed(ShortPlay p, int i, EpisodeData e) {
+                        if (!isActivePlayer(holder[0], feedPosition)) return;
                         currentEpisode = Math.max(1, i);
-                        updatePlaybackChrome(p, 0, 0);
+                        fixedOverlay.bindPage(holder[0], p, currentEpisode);
                     }
                     @Override public void onItemSelected(int p, ItemType t, int i) { }
                     @Override public void onVideoPlayStateChanged(ShortPlay p, int i, int s) { }
-                    @Override public void onVideoPlayCompleted(ShortPlay p, int i) { }
+                    @Override public void onVideoPlayCompleted(ShortPlay p, int i) {
+                        if (isActivePlayer(holder[0], feedPosition)) {
+                            completedEpisodeKeys.add(p.id + ":" + Math.max(1, i));
+                        }
+                    }
                     @Override public void onEnterImmersiveMode() { }
                     @Override public void onExitImmersiveMode() { }
                     @Override public boolean isNeedBlock(ShortPlay p, int i) { return false; }
@@ -162,28 +392,325 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
                         return createMixPlayerControls(shortPlay);
                     }
                 });
+        holder[0] = fragment;
+        return fragment;
+    }
+
+    private boolean isActivePlayer(ShortPlayFragment fragment, int feedPosition) {
+        if (fragment == null) return false;
+        if (!feedMode) return fragment == activePlayerFragment;
+        return feedPager != null
+                && feedPager.getCurrentItem() == feedPosition
+                && fragment == activePlayerFragment;
+    }
+
+    private void ensureDetailContainer() {
+        if (container != null) return;
+        container = new FrameLayout(this);
+        container.setId(View.generateViewId());
+        rootContainer.addView(container, 0, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private boolean isAtSeriesBoundary(int direction, ShortPlay shortPlay) {
+        // PSSDK names these constants after the content direction: DIRECTION_UP is
+        // emitted when the finger moves down at the first item, and vice versa.
+        return direction == PSSDK.DIRECTION_UP && currentEpisode <= 1
+                || direction == PSSDK.DIRECTION_DOWN
+                && currentEpisode >= Math.max(1, shortPlay.total);
+    }
+
+    private void enterCurrentDrama() {
+        if (!feedMode || currentDrama == null || fragmentTransitionInProgress) return;
+        if (preloadedDetailFragment == null || preloadedDetailContainer == null) {
+            prepareDetailPreload();
+            rootContainer.post(this::enterCurrentDrama);
+            return;
+        }
+        animateIntoDetail();
+    }
+
+    private void prepareDetailPreload() {
+        if (!feedMode || currentDrama == null || isFinishing() || isDestroyed()) return;
+        if (rootContainer.getWidth() == 0) {
+            rootContainer.post(this::prepareDetailPreload);
+            return;
+        }
+        if (preloadedDetailDramaId == currentDrama.id
+                && preloadedDetailFragment != null
+                && preloadedDetailContainer != null) return;
+        clearDetailPreload();
+        FrameLayout detail = new FrameLayout(this);
+        detail.setId(View.generateViewId());
+        detail.setTranslationX(rootContainer.getWidth());
+        int chromeIndex = Math.max(0, rootContainer.indexOfChild(fixedOverlay));
+        rootContainer.addView(detail, chromeIndex, new FrameLayout.LayoutParams(-1, -1));
+        ShortPlayFragment fragment = createPlayerFragment(currentDrama, false, -1);
+        preloadedDetailContainer = detail;
+        preloadedDetailFragment = fragment;
+        preloadedDetailDramaId = currentDrama.id;
         getSupportFragmentManager().beginTransaction()
-                .replace(R.id.dramaverse_container, fragment)
-                .runOnCommit(() -> { })
-                .commit();
+                .add(detail.getId(), fragment)
+                .setMaxLifecycle(fragment, Lifecycle.State.STARTED)
+                .commitNowAllowingStateLoss();
+    }
+
+    private void clearDetailPreload() {
+        if (preloadedDetailFragment != null && preloadedDetailFragment.isAdded()) {
+            getSupportFragmentManager().beginTransaction()
+                    .remove(preloadedDetailFragment)
+                    .commitNowAllowingStateLoss();
+        }
+        if (preloadedDetailContainer != null) {
+            rootContainer.removeView(preloadedDetailContainer);
+        }
+        preloadedDetailFragment = null;
+        preloadedDetailContainer = null;
+        preloadedDetailDramaId = -1L;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            beginGesture(event);
+        } else if (gestureVelocityTracker != null) {
+            gestureVelocityTracker.addMovement(event);
+        }
+
+        if (action == MotionEvent.ACTION_MOVE) {
+            float deltaX = event.getX() - gestureDownX;
+            float deltaY = event.getY() - gestureDownY;
+            if (!verticalDragActive
+                    && !horizontalDragActive
+                    && feedMode
+                    && deltaX < 0f
+                    && Math.abs(deltaX) > touchSlop
+                    && Math.abs(deltaX) > Math.abs(deltaY) * 1.12f
+                    && preloadedDetailContainer != null
+                    && preloadedDetailFragment != null) {
+                horizontalDragActive = true;
+                cancelChildGesture(event);
+            } else if (!verticalDragActive
+                    && !horizontalDragActive
+                    && !feedMode
+                    && Math.abs(deltaY) > touchSlop
+                    && Math.abs(deltaY) > Math.abs(deltaX) * 1.12f
+                    && canSwitchDramaForDrag(deltaY)) {
+                verticalDragActive = true;
+                cancelChildGesture(event);
+            }
+            if (horizontalDragActive) {
+                updateHorizontalDrag(deltaX);
+                return true;
+            }
+            if (verticalDragActive) {
+                updateVerticalDrag(deltaY);
+                return true;
+            }
+        }
+
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            float deltaX = event.getX() - gestureDownX;
+            float deltaY = event.getY() - gestureDownY;
+            if (horizontalDragActive) {
+                float velocityX = velocityX();
+                boolean shouldEnter = action == MotionEvent.ACTION_UP
+                        && (deltaX <= -dp(HORIZONTAL_SWIPE_THRESHOLD_DP)
+                        || deltaX <= -dp(VERTICAL_FLING_MIN_DISTANCE_DP)
+                        && velocityX <= -dp(VERTICAL_FLING_VELOCITY_DP));
+                finishGestureTracking();
+                if (shouldEnter) {
+                    animateIntoDetail();
+                } else {
+                    resetHorizontalDrag();
+                }
+                return true;
+            }
+            if (verticalDragActive) {
+                float velocityY = velocityY();
+                boolean shouldSwitch = action == MotionEvent.ACTION_UP
+                        && canSwitchDramaForDrag(deltaY)
+                        && (Math.abs(deltaY) >= dp(VERTICAL_SWIPE_THRESHOLD_DP)
+                        || Math.abs(deltaY) >= dp(VERTICAL_FLING_MIN_DISTANCE_DP)
+                        && Math.abs(velocityY) >= dp(VERTICAL_FLING_VELOCITY_DP)
+                        && Math.signum(velocityY) == Math.signum(deltaY));
+                finishGestureTracking();
+                if (shouldSwitch) {
+                    animateToRandomDrama(deltaY);
+                } else {
+                    resetVerticalDrag();
+                }
+                return true;
+            }
+            finishGestureTracking();
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    private void beginGesture(MotionEvent event) {
+        if (container != null) container.animate().cancel();
+        if (feedPager != null) feedPager.animate().cancel();
+        if (preloadedDetailContainer != null) preloadedDetailContainer.animate().cancel();
+        gestureDownX = event.getX();
+        gestureDownY = event.getY();
+        verticalDragActive = false;
+        horizontalDragActive = false;
+        if (gestureVelocityTracker != null) gestureVelocityTracker.recycle();
+        gestureVelocityTracker = VelocityTracker.obtain();
+        gestureVelocityTracker.addMovement(event);
+    }
+
+    private void cancelChildGesture(MotionEvent event) {
+        MotionEvent cancel = MotionEvent.obtain(event);
+        cancel.setAction(MotionEvent.ACTION_CANCEL);
+        super.dispatchTouchEvent(cancel);
+        cancel.recycle();
+    }
+
+    private boolean canSwitchDramaForDrag(float deltaY) {
+        if (currentDrama == null || fragmentTransitionInProgress || deltaY == 0f) return false;
+        if (feedMode) return true;
+        int sdkDirection = deltaY > 0f ? PSSDK.DIRECTION_UP : PSSDK.DIRECTION_DOWN;
+        return isAtSeriesBoundary(sdkDirection, currentDrama);
+    }
+
+    private void updateVerticalDrag(float deltaY) {
+        if (container == null) return;
+        float maxOffset = Math.max(dp(VERTICAL_SWIPE_THRESHOLD_DP), container.getHeight() * 0.62f);
+        float offset = Math.max(-maxOffset, Math.min(maxOffset, deltaY));
+        container.setTranslationY(offset);
+        float progress = Math.min(1f, Math.abs(offset) / Math.max(1f, container.getHeight()));
+        container.setAlpha(1f - progress * 0.12f);
+    }
+
+    private float velocityY() {
+        if (gestureVelocityTracker == null) return 0f;
+        gestureVelocityTracker.computeCurrentVelocity(1000);
+        return gestureVelocityTracker.getYVelocity();
+    }
+
+    private float velocityX() {
+        if (gestureVelocityTracker == null) return 0f;
+        gestureVelocityTracker.computeCurrentVelocity(1000);
+        return gestureVelocityTracker.getXVelocity();
+    }
+
+    private void finishGestureTracking() {
+        verticalDragActive = false;
+        horizontalDragActive = false;
+        if (gestureVelocityTracker != null) {
+            gestureVelocityTracker.recycle();
+            gestureVelocityTracker = null;
+        }
+    }
+
+    private void resetVerticalDrag() {
+        if (container == null) return;
+        container.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(190)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+    }
+
+    private void animateToRandomDrama(float deltaY) {
+        if (container == null) return;
+        int direction = deltaY < 0f ? -1 : 1;
+        if (randomDramaPool.isEmpty()) {
+            switchWhenPoolLoads = true;
+            pendingSwitchDirection = direction;
+            loadRandomDramaPool(false);
+            resetVerticalDrag();
+            return;
+        }
+        fragmentTransitionInProgress = true;
+        float target = direction * Math.max(1, container.getHeight());
+        container.animate()
+                .translationY(target)
+                .alpha(0.78f)
+                .setDuration(170)
+                .setInterpolator(new AccelerateInterpolator())
+                .withEndAction(() -> {
+                    fragmentTransitionInProgress = false;
+                    container.setTranslationY(0f);
+                    container.setAlpha(0f);
+                    switchToRandomDrama(direction);
+                })
+                .start();
+    }
+
+    private void updateHorizontalDrag(float deltaX) {
+        if (feedPager == null || preloadedDetailContainer == null) return;
+        float width = Math.max(1, rootContainer.getWidth());
+        float offset = Math.max(-width, Math.min(0f, deltaX));
+        feedPager.setTranslationX(offset);
+        preloadedDetailContainer.setTranslationX(width + offset);
+        fixedOverlay.setAlpha(1f - Math.min(1f, Math.abs(offset) / width) * 0.45f);
+    }
+
+    private void resetHorizontalDrag() {
+        if (feedPager == null || preloadedDetailContainer == null) return;
+        float width = Math.max(1, rootContainer.getWidth());
+        feedPager.animate()
+                .translationX(0f)
+                .setDuration(190)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+        preloadedDetailContainer.animate()
+                .translationX(width)
+                .setDuration(190)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+        fixedOverlay.animate().alpha(1f).setDuration(150).start();
+    }
+
+    private void animateIntoDetail() {
+        if (!feedMode || feedPager == null || preloadedDetailContainer == null
+                || preloadedDetailFragment == null || fragmentTransitionInProgress) return;
+        fragmentTransitionInProgress = true;
+        float width = Math.max(1, rootContainer.getWidth());
+        feedPager.animate()
+                .translationX(-width)
+                .setDuration(220)
+                .setInterpolator(new AccelerateInterpolator())
+                .start();
+        preloadedDetailContainer.animate()
+                .translationX(0f)
+                .setDuration(240)
+                .setInterpolator(new DecelerateInterpolator())
+                .withEndAction(this::finishEnteringDetail)
+                .start();
+        fixedOverlay.animate().alpha(1f).setDuration(180).start();
+    }
+
+    private void finishEnteringDetail() {
+        if (preloadedDetailContainer == null || preloadedDetailFragment == null) return;
+        feedMode = false;
+        resultAction = "enter_detail";
+        container = preloadedDetailContainer;
+        activePlayerFragment = preloadedDetailFragment;
+        ShortPlayFragment detailFragment = preloadedDetailFragment;
+        preloadedDetailContainer = null;
+        preloadedDetailFragment = null;
+        preloadedDetailDramaId = -1L;
+        if (feedPager != null) {
+            feedPager.setAdapter(null);
+            rootContainer.removeView(feedPager);
+        }
+        feedPager = null;
+        feedAdapter = null;
+        container.setTranslationX(0f);
+        getSupportFragmentManager().beginTransaction()
+                .setMaxLifecycle(detailFragment, Lifecycle.State.RESUMED)
+                .runOnCommit(() -> fragmentTransitionInProgress = false)
+                .commitAllowingStateLoss();
+        fixedOverlay.bindPage(detailFragment, currentDrama, currentEpisode);
+        rootContainer.bringChildToFront(fixedOverlay);
     }
 
     private List<View> createMixPlayerControls(ShortPlay shortPlay) {
         ArrayList<View> views = new ArrayList<>();
-
-        MixOverlayView overlay = new MixOverlayView(this);
-        overlay.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
-        views.add(overlay);
-
-        RewardTaskView rewardTask = new RewardTaskView(this);
-        FrameLayout.LayoutParams rewardTaskParams = new FrameLayout.LayoutParams(dp(52), dp(58));
-        rewardTaskParams.gravity = Gravity.RIGHT | Gravity.BOTTOM;
-        rewardTaskParams.rightMargin = dp(7);
-        rewardTaskParams.bottomMargin = dp(294);
-        rewardTask.setLayoutParams(rewardTaskParams);
-        rewardTask.setOnClickListener(v -> Toast.makeText(
-                this, text("watchToEarn"), Toast.LENGTH_SHORT).show());
-        views.add(rewardTask);
 
         ShareControlView share = new ShareControlView(this);
         share.setImageResource(R.drawable.share);
@@ -230,34 +757,40 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
         return views;
     }
 
+    private final class FeedPagerAdapter extends FragmentStateAdapter {
+        private final SparseArray<ShortPlayFragment> fragments = new SparseArray<>();
+
+        FeedPagerAdapter(FragmentActivity activity) {
+            super(activity);
+        }
+
+        @NonNull
+        @Override
+        public Fragment createFragment(int position) {
+            ShortPlayFragment fragment = createPlayerFragment(feedDramas.get(position), true, position);
+            fragments.put(position, fragment);
+            if (feedPager != null && feedPager.getCurrentItem() == position) {
+                feedPager.post(() -> bindFeedPosition(position));
+            }
+            return fragment;
+        }
+
+        @Override
+        public int getItemCount() {
+            return feedDramas.size();
+        }
+
+        @Nullable
+        ShortPlayFragment fragmentAt(int position) {
+            return fragments.get(position);
+        }
+    }
+
     private static final class ShareControlView extends androidx.appcompat.widget.AppCompatImageView
             implements PSSDK.IControlView {
         ShareControlView(android.content.Context context) { super(context); }
         @Override public PSSDK.ControlViewType getControlViewType() { return PSSDK.ControlViewType.Share; }
         @Override public void bindItemData(ShortPlayFragment fragment, ShortPlay shortPlay, int index) { }
-    }
-
-    private final class RewardTaskView extends androidx.appcompat.widget.AppCompatTextView
-            implements PSSDK.IControlView {
-        RewardTaskView(android.content.Context context) {
-            super(context);
-            Drawable icon = getResources().getDrawable(R.drawable.player_cash);
-            icon.setBounds(0, 0, dp(34), dp(30));
-            setCompoundDrawables(null, icon, null, null);
-            setCompoundDrawablePadding(dp(1));
-            setText(text("earn"));
-            setTextColor(Color.WHITE);
-            setTextSize(9);
-            setGravity(Gravity.CENTER);
-            setBackgroundResource(R.drawable.player_task_bg);
-            setContentDescription(text("watchToEarn"));
-        }
-
-        @Override public PSSDK.ControlViewType getControlViewType() {
-            return PSSDK.ControlViewType.CUSTOM;
-        }
-
-        @Override public void bindItemData(ShortPlayFragment fragment, ShortPlay play, int index) { }
     }
 
     private final class MixLikeView extends androidx.appcompat.widget.AppCompatTextView
@@ -270,8 +803,11 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
         MixLikeView(android.content.Context context, boolean collect) {
             super(context);
             this.collect = collect;
-            normal = getResources().getDrawable(collect ? R.drawable.collect : R.drawable.like);
-            selected = getResources().getDrawable(collect ? R.drawable.collected : R.drawable.liked);
+            normal = ContextCompat.getDrawable(context, collect ? R.drawable.collect : R.drawable.like);
+            selected = ContextCompat.getDrawable(context, collect ? R.drawable.collected : R.drawable.liked);
+            if (normal == null || selected == null) {
+                throw new IllegalStateException("Missing player control drawable");
+            }
             normal.setBounds(0, 0, dp(30), dp(30));
             selected.setBounds(0, 0, dp(30), dp(30));
             setGravity(Gravity.CENTER_HORIZONTAL);
@@ -309,7 +845,11 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
         private int index;
         MixProgressBar(android.content.Context context) {
             super(context);
-            setProgressDrawable(getResources().getDrawable(R.drawable.player_seek_progress));
+            Drawable progressDrawable = ContextCompat.getDrawable(context, R.drawable.player_seek_progress);
+            if (progressDrawable == null) {
+                throw new IllegalStateException("Missing player progress drawable");
+            }
+            setProgressDrawable(progressDrawable);
             setThumb(new ColorDrawable(Color.TRANSPARENT));
             int verticalPadding = Math.round(7 * getResources().getDisplayMetrics().density);
             setPadding(0, verticalPadding, 0, verticalPadding);
@@ -332,7 +872,7 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
         @Override public void onVideoPlayStateChanged(ShortPlay shortPlay, int index, int playbackState) { }
     }
 
-    private final class MixOverlayView extends FrameLayout implements PSSDK.IControlView {
+    private final class MixOverlayView extends FrameLayout {
         private TextView title;
         private TextView desc;
         private TextView choose;
@@ -347,18 +887,19 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
             desc = findViewById(R.id.tv_overlay_drama_desc);
             choose = findViewById(R.id.tv_overlay_choose_index_title);
             select = findViewById(R.id.tv_overlay_select);
-            earningsProgress = findViewById(R.id.pb_watch_reward);
-            rewardBalance = findViewById(R.id.tv_reward_balance);
-            rewardNext = findViewById(R.id.tv_reward_next);
-            rewardBalance.setText(formatCoins(coinBalance));
-            rewardNext.setText("+" + WATCH_REWARD_COINS + " · " + WATCH_REWARD_INTERVAL_SECONDS + "s");
             select.setText(text("select") + " ›");
             findViewById(R.id.btn_player_back).setContentDescription(text("back"));
             findViewById(R.id.btn_player_back).setOnClickListener(v -> finish());
-            findViewById(R.id.ll_choose_index).setOnClickListener(v -> showEpisodePicker());
+            findViewById(R.id.ll_choose_index).setOnClickListener(v -> {
+                if (feedMode) {
+                    enterCurrentDrama();
+                } else {
+                    showEpisodePicker();
+                }
+            });
         }
-        @Override public PSSDK.ControlViewType getControlViewType() { return PSSDK.ControlViewType.CUSTOM; }
-        @Override public void bindItemData(ShortPlayFragment fragment, ShortPlay play, int index) {
+        void bindPage(ShortPlayFragment fragment, ShortPlay play, int index) {
+            if (fragment == null || play == null) return;
             boundFragment = fragment;
             boundPlay = play;
             title.setText(play.title);
@@ -375,59 +916,6 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
                     .setItems(episodes, (dialog, which) -> boundFragment.startPlayIndex(which + 1))
                     .show();
         }
-    }
-
-    private void updatePlaybackChrome(ShortPlay shortPlay, int current, int duration) {
-        if (lastProgressEpisode != currentEpisode) {
-            lastProgressEpisode = currentEpisode;
-            lastRewardBucket = 0;
-        }
-        if (earningsProgress == null) return;
-        int elapsedSeconds = Math.max(0, current);
-        int bucket = elapsedSeconds / WATCH_REWARD_INTERVAL_SECONDS;
-        int cycleSeconds = elapsedSeconds % WATCH_REWARD_INTERVAL_SECONDS;
-        earningsProgress.setProgress((cycleSeconds * 100) / WATCH_REWARD_INTERVAL_SECONDS);
-        if (rewardNext != null) {
-            int remaining = WATCH_REWARD_INTERVAL_SECONDS - cycleSeconds;
-            rewardNext.setText("+" + WATCH_REWARD_COINS + " · " + remaining + "s");
-        }
-        if (bucket > lastRewardBucket) {
-            lastRewardBucket = bucket;
-            coinBalance += WATCH_REWARD_COINS;
-            getSharedPreferences("talevra_rewards", MODE_PRIVATE)
-                    .edit().putInt("coin_balance", coinBalance).apply();
-            if (rewardBalance != null) rewardBalance.setText(formatCoins(coinBalance));
-            showRewardAnimation();
-            earningsProgress.setProgress(0);
-        }
-    }
-
-    private void showRewardAnimation() {
-        LinearLayout reward = new LinearLayout(this);
-        reward.setOrientation(LinearLayout.HORIZONTAL);
-        reward.setGravity(Gravity.CENTER);
-        reward.setBackgroundResource(R.drawable.player_reward_toast_bg);
-        ImageView cash = new ImageView(this);
-        cash.setImageResource(R.drawable.player_cash);
-        reward.addView(cash, new LinearLayout.LayoutParams(dp(36), dp(32)));
-        TextView label = new TextView(this);
-        label.setText(text("rewardEarned", WATCH_REWARD_COINS));
-        label.setTextColor(Color.rgb(255, 219, 62));
-        label.setTextSize(18);
-        label.setTypeface(null, android.graphics.Typeface.BOLD);
-        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
-        labelParams.leftMargin = dp(5);
-        reward.addView(label, labelParams);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-2, dp(52), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        params.topMargin = dp(68);
-        container.addView(reward, params);
-        reward.setScaleX(.82f);
-        reward.setScaleY(.82f);
-        reward.setAlpha(0f);
-        reward.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180)
-                .withEndAction(() -> reward.animate().alpha(0f).translationY(-dp(34))
-                        .setStartDelay(650).setDuration(280)
-                        .withEndAction(() -> container.removeView(reward)).start()).start();
     }
 
     private int dp(int value) {
@@ -468,23 +956,8 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
             case "select": return localized("Choose", "Escolher", "Elegir", "Pilih", "選択", "선택");
             case "back": return localized("Back", "Voltar", "Volver", "Kembali", "戻る", "뒤로");
             case "confirm": return localized("OK", "OK", "Aceptar", "OK", "OK", "확인");
-            case "earn": return localized("Earn", "Ganhar", "Ganar", "Dapatkan", "獲得", "적립");
-            case "watchToEarn": return localized("Keep watching to earn coins", "Continue assistindo para ganhar moedas", "Sigue viendo para ganar monedas", "Terus tonton untuk mendapatkan koin", "視聴を続けてコインを獲得", "계속 시청하고 코인을 받으세요");
             default: return key;
         }
-    }
-
-    private String text(String key, int value) {
-        if (key.equals("rewardEarned")) {
-            return localized("+" + value + " coins", "+" + value + " moedas", "+" + value + " monedas",
-                    "+" + value + " koin", "+" + value + "コイン", "+" + value + " 코인");
-        }
-        return text(key);
-    }
-
-    private String formatCoins(int value) {
-        return localized(value + " coins", value + " moedas", value + " monedas", value + " koin",
-                value + "コイン", value + " 코인");
     }
 
     private String formatEpisodeCount(int value) {
@@ -502,14 +975,22 @@ public final class DramaversePlayActivity extends FragmentActivity implements PS
         Intent data = new Intent();
         data.putExtra(RESULT_LIKED, liked);
         data.putExtra(RESULT_EPISODE, currentEpisode);
-        data.putExtra(RESULT_POSITION_MS, currentPositionMs);
+        data.putExtra(RESULT_POSITION_MS, currentPositionSeconds * 1000);
         data.putExtra(RESULT_ACTION, resultAction);
+        data.putExtra(RESULT_DRAMA_ID, currentDrama == null ? -1L : currentDrama.id);
+        data.putStringArrayListExtra(
+                RESULT_COMPLETED_EPISODES,
+                new ArrayList<>(completedEpisodeKeys));
         setResult(Activity.RESULT_OK, data);
         super.finish();
     }
 
     private void finishWithError(String message) {
         Log.e(TAG, message);
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            rootContainer.post(() -> finishWithError(message));
+            return;
+        }
         showMessage(message, false);
     }
 

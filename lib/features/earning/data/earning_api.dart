@@ -57,4 +57,10 @@ class EarningApi {
       action('/api/rc/task/do', body);
   Future<Map<String, dynamic>> collectTask(Map<String, dynamic> body) =>
       action('/api/rc/task/collect', body);
+  Future<Map<String, dynamic>> orders(String uid, String productId) =>
+      post('/api/rc/order/list', {'haloUid': uid, 'productId': productId});
+  Future<Map<String, dynamic>> playCount(String uid, String productId) => post(
+    '/api/rc/module/playCountInfo',
+    {'haloUid': uid, 'productId': productId},
+  );
 }

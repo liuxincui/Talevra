@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:talevra/app/bootstrap/app_initializer.dart';
 import 'package:talevra/app/router/app_router.dart';
 import 'package:talevra/app/theme/app_theme.dart';
 import 'package:talevra/core/config/brand_provider.dart';
-import 'package:talevra/core/network/api_client.dart';
-import 'package:talevra/core/storage/local_storage.dart';
 import 'package:talevra/l10n/app_localizations.dart';
-
-final localeOverrideNotifier = ValueNotifier<Locale?>(null);
 
 /// 通用品牌 App：由各品牌入口（main_brand_*.dart）注入
 /// [brandCode] + [supportedLocales] + [defaultLocale]，实现"不同品牌启用不同语种"。
@@ -41,17 +38,4 @@ class TalevraApp extends StatelessWidget {
       ),
     ),
   );
-}
-
-/// 应用启动初始化钩子：网络层 + 本地存储。在各品牌入口的 main() 中
-/// 调用 `await AppInitializer.init();` 后再 runApp。
-class AppInitializer {
-  const AppInitializer._();
-  static Future<void> init() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    ApiClient.init();
-    await LocalStorage.init();
-    final code = LocalStorage.I.getString('settings.locale');
-    localeOverrideNotifier.value = code == null ? null : Locale(code);
-  }
 }

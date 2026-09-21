@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:talevra/l10n/app_localizations.dart';
 import 'package:video_player/video_player.dart';
 import 'data/player_repository.dart';
+import 'package:talevra/features/earning/data/earning_repository.dart';
 
 /// 沉浸式短剧播放器。视频地址由后端返回时替换 [_demoVideoUrl] 即可。
 class PlayerPage extends StatefulWidget {
   final String dramaId;
-  const PlayerPage({super.key, required this.dramaId});
+  final bool isFeed;
+
+  const PlayerPage({super.key, required this.dramaId, this.isFeed = false});
 
   @override
   State<PlayerPage> createState() => _PlayerPageState();
@@ -23,7 +26,7 @@ class _PlayerPageState extends State<PlayerPage> {
   bool _liked = false;
   bool _saved = false;
   bool _showControls = true;
-  int _episode = 3;
+  int _episode = 1;
   double _speed = 1;
   Duration _resumePosition = Duration.zero;
   Duration _lastSavedPosition = Duration.zero;
@@ -50,19 +53,22 @@ class _PlayerPageState extends State<PlayerPage> {
     final l = AppLocalizations.of(context)!;
     final language = Localizations.localeOf(context).languageCode;
     try {
-      await _repository.save(
-        dramaId: widget.dramaId,
-        state: PlayerPlaybackState(
-          liked: _liked,
-          saved: _saved,
-          episode: _episode,
-          speed: _speed,
-          position: _resumePosition,
-        ),
-      );
+      if (!widget.isFeed) {
+        await _repository.save(
+          dramaId: widget.dramaId,
+          state: PlayerPlaybackState(
+            liked: _liked,
+            saved: _saved,
+            episode: _episode,
+            speed: _speed,
+            position: _resumePosition,
+          ),
+        );
+      }
       final result = await const MethodChannel('talevra/dramaverse')
           .invokeMapMethod<Object?, Object?>('openPlayer', {
             'dramaId': widget.dramaId,
+            'mode': widget.isFeed ? 'feed' : 'detail',
             'liked': _liked,
             'episode': _episode,
             'language': language,
@@ -70,16 +76,33 @@ class _PlayerPageState extends State<PlayerPage> {
       final liked = result?['liked'] == true;
       final episode = (result?['episode'] as num?)?.toInt() ?? _episode;
       final positionMs = (result?['positionMs'] as num?)?.toInt() ?? 0;
-      await _repository.save(
-        dramaId: widget.dramaId,
-        state: PlayerPlaybackState(
-          liked: liked,
-          saved: _saved,
-          episode: episode < 1 ? 1 : episode,
-          speed: _speed,
-          position: Duration(milliseconds: positionMs),
-        ),
-      );
+      final returnedDramaId = result?['dramaId']?.toString();
+      final completedEpisodes =
+          (result?['completedEpisodes'] as List<Object?>?)
+              ?.map((value) => '$value')
+              .toList() ??
+          const <String>[];
+      final resultDramaId = returnedDramaId == null || returnedDramaId == '-1'
+          ? widget.dramaId
+          : returnedDramaId;
+      if (resultDramaId != 'feed') {
+        await _repository.save(
+          dramaId: resultDramaId,
+          state: PlayerPlaybackState(
+            liked: liked,
+            saved: _saved,
+            episode: episode < 1 ? 1 : episode,
+            speed: _speed,
+            position: Duration(milliseconds: positionMs),
+          ),
+        );
+      }
+      if (completedEpisodes.isNotEmpty) {
+        await EarningRepository(useRemoteConfig: false).recordWatchedEpisodes(
+          completedEpisodes,
+          country: _countryForLanguage(language),
+        );
+      }
       if (!mounted) return;
       context.pop();
     } on PlatformException catch (error) {
@@ -95,7 +118,17 @@ class _PlayerPageState extends State<PlayerPage> {
     }
   }
 
+  String _countryForLanguage(String language) => switch (language) {
+    'pt' => 'BR',
+    'es' => 'MX',
+    'id' => 'ID',
+    'ja' => 'JP',
+    'ko' => 'KR',
+    _ => 'US',
+  };
+
   Future<void> _restoreState() async {
+    if (widget.isFeed) return;
     final state = await _repository.load(
       widget.dramaId,
       defaultEpisode: _episode,

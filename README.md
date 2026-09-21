@@ -32,6 +32,31 @@ pssdk.debug=false
 将对应包名的播放器授权文件放到
 `android/app/src/main/assets/vod_player.lic`。License、签名文件、APK、映射表和符号文件均不提交到 Git。
 
+构建当前已配置的 `com.talevra.story` 正式包，直接执行：
+
+```bash
+# 生成可直接安装测试的 APK
+./scripts/build_release.sh
+
+# 生成用于提交 Google Play 的 AAB
+./scripts/build_aab.sh
+```
+
+脚本默认使用 `prod` 环境，并自动完成配置检查、依赖更新、静态分析、R8、Dart 混淆、安装包
+及符号文件归档。AAB 脚本还会自动递增补丁版本和 Version Code，例如
+`1.0.0+2` 会变为 `1.0.1+3`；构建失败时会自动恢复原版本。
+
+需要直接指定一个显示版本，或构建其他环境时，可以临时指定：
+
+```bash
+TALEVRA_ENV=staging ./scripts/build_release.sh
+TALEVRA_ENV=staging ./scripts/build_aab.sh
+TALEVRA_VERSION_NAME=2.0.0 ./scripts/build_aab.sh
+```
+
+产物位于 `release/brand_us/<版本号>/`。发布 APK/AAB、Flutter symbols 和
+`r8-mapping.txt` 必须按同一版本一起归档。
+
 ```bash
 # 运行某国品牌（以美国为例）
 flutter run --flavor brand_us -t lib/main_brand_us.dart
@@ -95,7 +120,7 @@ Android release 构建在 `android/app/build.gradle.kts` 中显式开启 R8 和�
 
 ### 网赚配置
 
-网赚配置集中在 `lib/features/earning/config/earning_config.dart`，由 `EarningConfig.local` 提供本地默认值；进入网赚页后，客户端按国家调用配置中心，服务端返回值只覆盖允许动态调整的字段，未返回时继续使用本地默认值。
+网赚数值由运营配置在 RealCash 后台，客户端进入网赚页后按国家调用配置中心获取。`EarningConfig.local` 只作为首次启动或网络失败时的最小缓存兜底，不能作为线上奖励规则来源；服务端返回值优先覆盖本地缓存。
 
 当前可配置项包括：
 
@@ -114,6 +139,14 @@ Android release 构建在 `android/app/build.gradle.kts` 中显式开启 R8 和�
 提现档位默认值也集中在该配置中：注册满 3/7/30/30/60/180 天，对应 `1/5/10/50/100/200 USD`；服务端成功返回档位列表时优先使用服务端数据。
 
 网赚接口统一封装在 `lib/features/earning/data/earning_api.dart` 和 `earning_repository.dart`，包括配置、任务、余额、签到、广告结算和任务领取。页面只调用 `EarningController`，不得直接拼接 `/api/rc/*` 请求或修改配置默认值。
+
+配置中心及提现档位的完整返回字段，按业务分组整理在 [网赚配置中心返回字段](docs/earning-api-config.md)，每组使用 `key / value` 两列描述。
+
+运营确认奖励、兑换、签到和国家差异时，使用 [网赚运营数值表](docs/earning-ops-values.md)，不要直接修改接口文档中的 JSON。
+
+接入现有 RealCash 网赚接口时，使用 [RealCash 接口复用与本地数据映射](docs/realcash-integration-mapping.md)，先按该文档确认 `deviceId`、`haloUid`、广告事件和任务字段，再进入代码实现。
+
+RealCash 的开发协议和调用顺序以 [RealCash 网赚接口协议](docs/realcash-api-spec.md) 为准，分阶段实施步骤见 [RealCash 网赚接入开发计划](docs/realcash-development-plan.md)。运营填写和确认数值时使用 [RealCash 运营配置表](docs/realcash-ops-config.md)。
 
 ### 配置边界
 

@@ -223,6 +223,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get privacyPolicy => '개인정보 처리방침';
 
   @override
+  String get privacyOpenFailed => '개인정보 처리방침을 열 수 없습니다. 다시 시도해 주세요.';
+
+  @override
   String get clearCache => '캐시 삭제';
 
   @override

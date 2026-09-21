@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "487478789442",
+    "project_id": "talevra-40e89",
+    "storage_bucket": "talevra-40e89.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:487478789442:android:d81af301661e508ac9f4db",
+        "android_client_info": {
+          "package_name": "com.talevra.story"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4tlEGahLSJoP1k3sBW7MEfFyeFyBNbd8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:talevra/app/theme/app_theme.dart';
+import 'package:talevra/core/config/brand_provider.dart';
 import 'package:talevra/core/tool/coin_tool.dart';
 import 'application/earning_controller.dart';
+import 'models/earning_task.dart';
+import 'models/withdrawal_level.dart';
 import 'package:talevra/l10n/app_localizations.dart';
 
 class EarningPage extends ConsumerStatefulWidget {
@@ -15,8 +20,22 @@ class _EarningPageState extends ConsumerState<EarningPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(earningControllerProvider.notifier).load());
+    Future.microtask(() {
+      final brand = ref.read(brandCodeProvider);
+      ref
+          .read(earningControllerProvider.notifier)
+          .load(country: _countryFromBrand(brand));
+    });
   }
+
+  String _countryFromBrand(String brand) => switch (brand) {
+    'brand_br' => 'BR',
+    'brand_mx' => 'MX',
+    'brand_id' => 'ID',
+    'brand_jp' => 'JP',
+    'brand_kr' => 'KR',
+    _ => 'US',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -54,17 +73,41 @@ class _EarningPageState extends ConsumerState<EarningPage> {
                       _CashoutCard(
                         coins: state.wallet?.coins ?? 0,
                         label: l?.availableBalance ?? 'Available balance',
+                        minimum: state.levels.isEmpty
+                            ? 1990000
+                            : state.levels.first.requiredCoins,
+                        minimumAmount: state.levels.isEmpty
+                            ? 1
+                            : state.levels.first.amountUsd,
+                        onWithdraw: () => _showWithdrawalLevels(state),
+                      ),
+                      const SizedBox(height: 16),
+                      _DailyProgress(
+                        episodes: state.todayEpisodeCount,
+                        episodeCap: state.config.watchGoals.last,
+                        ads: state.todayAdCount,
+                        adCap: state.config.videoDailyCap,
                       ),
                       const SizedBox(height: 16),
                       _CheckInCard(
                         streak: state.checkIn.streak,
                         checked: state.checkIn.checkedToday,
+                        rewards: state.config.checkInCoins,
                         onClaim: state.checkIn.checkedToday
                             ? null
                             : () => ref
                                   .read(earningControllerProvider.notifier)
                                   .performCheckIn(),
                         label: l?.checkIn ?? 'Claim',
+                      ),
+                      const SizedBox(height: 16),
+                      _SpinCard(
+                        used: state.todaySpinCount,
+                        rewards: state.config.spinRewards,
+                        lastReward: state.lastSpinReward,
+                        busy: state.actionInProgress,
+                        onSpin: () =>
+                            ref.read(earningControllerProvider.notifier).spin(),
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -74,22 +117,24 @@ class _EarningPageState extends ConsumerState<EarningPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ...state.tasks.map(
-                        (task) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _TaskCard(
-                            title: task.title,
-                            reward: task.reward,
-                            ratio: task.ratio,
-                            claimed: task.claimed,
-                            onPressed: task.completed && !task.claimed
-                                ? () => ref
-                                      .read(earningControllerProvider.notifier)
-                                      .collect(task)
-                                : null,
+                      ...state.tasks
+                          .where((task) => task.visible)
+                          .map(
+                            (task) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _TaskCard(
+                                title: task.title,
+                                reward: task.reward,
+                                ratio: task.ratio,
+                                progress: task.progress,
+                                goal: task.goal,
+                                multiplier: task.multiplier,
+                                type: task.type,
+                                claimed: task.claimed,
+                                onPressed: _taskAction(state, task),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                       if (state.loading)
                         const Padding(
                           padding: EdgeInsets.all(24),
@@ -126,7 +171,6 @@ class _EarningPageState extends ConsumerState<EarningPage> {
                           spacing: 10,
                           runSpacing: 10,
                           children: state.levels
-                              .take(3)
                               .map(
                                 (level) => _WithdrawalLevelChip(
                                   amount: level.amountUsd,
@@ -151,6 +195,258 @@ class _EarningPageState extends ConsumerState<EarningPage> {
       ),
     );
   }
+
+  VoidCallback? _taskAction(EarningState state, EarningTask task) {
+    if (state.actionInProgress || task.claimed) return null;
+    if (task.completed) {
+      return () => ref.read(earningControllerProvider.notifier).collect(task);
+    }
+    return switch (task.type) {
+      EarningTaskType.watchContent => () => context.push(
+        '/player/feed?mode=feed',
+      ),
+      EarningTaskType.watchAd => () => _message(
+        'Rewarded ads are credited only after a verified completion.',
+      ),
+      EarningTaskType.notification => _requestNotificationReward,
+      _ => null,
+    };
+  }
+
+  Future<void> _requestNotificationReward() async {
+    try {
+      final granted =
+          await const MethodChannel(
+            'talevra/dramaverse',
+          ).invokeMethod<bool>('requestNotificationPermission') ??
+          false;
+      await ref
+          .read(earningControllerProvider.notifier)
+          .confirmNotificationPermission(granted);
+      if (!mounted) return;
+      _message(
+        granted
+            ? 'Notification reward credited.'
+            : 'Notification permission was not granted.',
+      );
+    } on PlatformException {
+      if (mounted) _message('Unable to request notification permission.');
+    }
+  }
+
+  Future<void> _showWithdrawalLevels(
+    EarningState state,
+  ) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Withdrawal levels',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 12),
+            for (final level in state.levels)
+              _WithdrawalRow(
+                level: level,
+                eligible: state.eligibleLevels.contains(level),
+                coins: state.wallet?.coins ?? 0,
+              ),
+            const SizedBox(height: 8),
+            const Text(
+              'Payout requests remain unavailable until the verified order-create contract is configured.',
+              style: TextStyle(color: AppPalette.muted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  void _message(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
+}
+
+class _DailyProgress extends StatelessWidget {
+  final int episodes;
+  final int episodeCap;
+  final int ads;
+  final int adCap;
+
+  const _DailyProgress({
+    required this.episodes,
+    required this.episodeCap,
+    required this.ads,
+    required this.adCap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: _Metric(
+          icon: Icons.movie_filter_outlined,
+          value: '$episodes/$episodeCap',
+          label: 'Episodes today',
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: _Metric(
+          icon: Icons.play_circle_outline,
+          value: '$ads/$adCap',
+          label: 'Verified ads',
+        ),
+      ),
+    ],
+  );
+}
+
+class _Metric extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+
+  const _Metric({required this.icon, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 82,
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    decoration: BoxDecoration(
+      color: AppPalette.card,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: Colors.white10),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: AppPalette.yellow),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: AppPalette.muted),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SpinCard extends StatelessWidget {
+  final int used;
+  final List<int> rewards;
+  final int? lastReward;
+  final bool busy;
+  final VoidCallback onSpin;
+
+  const _SpinCard({
+    required this.used,
+    required this.rewards,
+    required this.lastReward,
+    required this.busy,
+    required this.onSpin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = (rewards.length - used).clamp(0, rewards.length);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppPalette.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.casino_outlined, color: AppPalette.yellow, size: 34),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Daily lucky draw',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  lastReward == null
+                      ? '$remaining attempts remaining'
+                      : '+${CoinTool.format(lastReward!)} coins · $remaining remaining',
+                  style: const TextStyle(color: AppPalette.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          FilledButton(
+            onPressed: remaining > 0 && !busy ? onSpin : null,
+            child: Text(remaining > 0 ? 'Draw' : 'Done'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WithdrawalRow extends StatelessWidget {
+  final WithdrawalLevel level;
+  final bool eligible;
+  final int coins;
+
+  const _WithdrawalRow({
+    required this.level,
+    required this.eligible,
+    required this.coins,
+  });
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(
+      eligible ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+      color: eligible ? AppPalette.yellow : AppPalette.muted,
+    ),
+    title: Text(
+      '\$${level.amountUsd.toStringAsFixed(2)} USD / USDT',
+      style: const TextStyle(fontWeight: FontWeight.w800),
+    ),
+    subtitle: Text(
+      '${level.regDays} days · ${CoinTool.format(level.requiredCoins)} coins',
+    ),
+    trailing: Text(
+      eligible
+          ? 'Eligible'
+          : '${((coins / level.requiredCoins).clamp(0, 1) * 100).floor()}%',
+      style: TextStyle(
+        color: eligible ? AppPalette.yellow : AppPalette.muted,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 class _WithdrawalLevelChip extends StatelessWidget {
@@ -223,11 +519,20 @@ class _RewardsUnavailableBanner extends StatelessWidget {
 
 class _CashoutCard extends StatelessWidget {
   final int coins;
+  final int minimum;
+  final double minimumAmount;
   final String label;
-  const _CashoutCard({required this.coins, required this.label});
+  final VoidCallback onWithdraw;
+  const _CashoutCard({
+    required this.coins,
+    required this.minimum,
+    required this.minimumAmount,
+    required this.label,
+    required this.onWithdraw,
+  });
   @override
   Widget build(BuildContext context) {
-    final ratio = (coins / 100000).clamp(0, 1).toDouble();
+    final ratio = (coins / minimum).clamp(0, 1).toDouble();
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -251,7 +556,10 @@ class _CashoutCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              FilledButton(onPressed: () {}, child: const Text('Withdraw')),
+              FilledButton(
+                onPressed: onWithdraw,
+                child: const Text('Withdraw'),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -262,8 +570,8 @@ class _CashoutCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 12, color: AppPalette.muted),
               ),
               const Spacer(),
-              const Text(
-                r'$0.10',
+              Text(
+                '\$${minimumAmount.toStringAsFixed(2)}',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
             ],
@@ -286,11 +594,13 @@ class _CheckInCard extends StatelessWidget {
   final bool checked;
   final VoidCallback? onClaim;
   final String label;
+  final List<int> rewards;
   const _CheckInCard({
     required this.streak,
     required this.checked,
     required this.onClaim,
     required this.label,
+    required this.rewards,
   });
   @override
   Widget build(BuildContext context) => Container(
@@ -344,7 +654,7 @@ class _CheckInCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    i == 6 ? '???' : '${500 + i * 300}',
+                    CoinTool.format(rewards[i]),
                     style: const TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
@@ -376,12 +686,20 @@ class _TaskCard extends StatelessWidget {
   final String title;
   final int reward;
   final double ratio;
+  final int progress;
+  final int goal;
+  final int multiplier;
+  final EarningTaskType type;
   final bool claimed;
   final VoidCallback? onPressed;
   const _TaskCard({
     required this.title,
     required this.reward,
     required this.ratio,
+    this.progress = 0,
+    this.goal = 1,
+    this.multiplier = 0,
+    this.type = EarningTaskType.watchContent,
     this.claimed = false,
     this.onPressed,
   });
@@ -401,10 +719,12 @@ class _TaskCard extends StatelessWidget {
             color: const Color(0xFF494627),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(
-            Icons.ondemand_video_rounded,
-            color: AppPalette.yellow,
-          ),
+          child: Icon(switch (type) {
+            EarningTaskType.watchAd => Icons.smart_display_rounded,
+            EarningTaskType.notification => Icons.notifications_active,
+            EarningTaskType.spin => Icons.casino,
+            _ => Icons.ondemand_video_rounded,
+          }, color: AppPalette.yellow),
         ),
         const SizedBox(width: 13),
         Expanded(
@@ -421,7 +741,7 @@ class _TaskCard extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                '+${CoinTool.format(reward)} coins toward cashout',
+                '+${CoinTool.format(reward)} coins${multiplier > 0 ? ' · up to ${multiplier}x' : ''}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppPalette.yellow,
@@ -429,6 +749,11 @@ class _TaskCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 9),
+              Text(
+                '${progress.clamp(0, goal)}/$goal',
+                style: const TextStyle(fontSize: 10, color: AppPalette.muted),
+              ),
+              const SizedBox(height: 4),
               LinearProgressIndicator(
                 value: ratio,
                 minHeight: 6,

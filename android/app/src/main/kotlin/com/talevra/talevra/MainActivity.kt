@@ -2,6 +2,9 @@ package com.talevra.talevra
 
 import io.flutter.embedding.android.FlutterActivity
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.bytedance.sdk.shortplay.api.PSSDK
@@ -11,10 +14,12 @@ import java.util.ArrayList
 class MainActivity : FlutterActivity() {
     companion object {
         private const val PLAYER_REQUEST_CODE = 7201
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 7202
     }
 
     private val dramaCache = mutableMapOf<Long, ShortPlay>()
     private var pendingPlayerResult: MethodChannel.Result? = null
+    private var pendingNotificationResult: MethodChannel.Result? = null
     private var activeContentLanguage = "en"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -28,10 +33,14 @@ class MainActivity : FlutterActivity() {
                             return@setMethodCallHandler
                         }
                         val intent = Intent(this, DramaversePlayActivity::class.java)
-                        call.argument<String>("dramaId")?.toLongOrNull()?.let {
-                            intent.putExtra(DramaversePlayActivity.EXTRA_SHORT_PLAY_ID, it)
-                            dramaCache[it]?.let { drama ->
-                                intent.putExtra(DramaversePlayActivity.EXTRA_SHORT_PLAY, drama)
+                        val mode = call.argument<String>("mode") ?: DramaversePlayActivity.MODE_DETAIL
+                        intent.putExtra(DramaversePlayActivity.EXTRA_MODE, mode)
+                        if (mode != DramaversePlayActivity.MODE_FEED) {
+                            call.argument<String>("dramaId")?.toLongOrNull()?.let {
+                                intent.putExtra(DramaversePlayActivity.EXTRA_SHORT_PLAY_ID, it)
+                                dramaCache[it]?.let { drama ->
+                                    intent.putExtra(DramaversePlayActivity.EXTRA_SHORT_PLAY, drama)
+                                }
                             }
                         }
                         intent.putExtra(
@@ -62,9 +71,40 @@ class MainActivity : FlutterActivity() {
                             result.success(null)
                         }
                     }
+                    "requestNotificationPermission" -> requestNotificationPermission(result)
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun requestNotificationPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        ) {
+            result.success(true)
+            return
+        }
+        if (pendingNotificationResult != null) {
+            result.error("PERMISSION_IN_PROGRESS", "Notification permission request is already active", null)
+            return
+        }
+        pendingNotificationResult = result
+        requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST_CODE,
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != NOTIFICATION_PERMISSION_REQUEST_CODE) return
+        val result = pendingNotificationResult ?: return
+        pendingNotificationResult = null
+        result.success(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
     }
 
     @Deprecated("Deprecated in Android")
@@ -79,6 +119,10 @@ class MainActivity : FlutterActivity() {
                 "episode" to (data?.getIntExtra(DramaversePlayActivity.RESULT_EPISODE, 1) ?: 1),
                 "positionMs" to (data?.getIntExtra(DramaversePlayActivity.RESULT_POSITION_MS, 0) ?: 0),
                 "action" to (data?.getStringExtra(DramaversePlayActivity.RESULT_ACTION) ?: "back"),
+                "dramaId" to (data?.getLongExtra(DramaversePlayActivity.RESULT_DRAMA_ID, -1L)?.toString() ?: ""),
+                "completedEpisodes" to (data?.getStringArrayListExtra(
+                    DramaversePlayActivity.RESULT_COMPLETED_EPISODES,
+                ) ?: emptyList<String>()),
             ),
         )
     }

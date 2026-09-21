@@ -90,6 +90,7 @@
   "shortsTab": "Shorts",
   "profileTab": "Profile",
   "privacyPolicy": "Privacy policy",
+  "privacyOpenFailed": "Couldn't open the privacy policy. Please try again.",
   "clearCache": "Clear cache",
   "cacheCleared": "Cache cleared",
   "autoLabel": "Auto",

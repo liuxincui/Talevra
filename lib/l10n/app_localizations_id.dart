@@ -224,6 +224,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get privacyPolicy => 'Kebijakan privasi';
 
   @override
+  String get privacyOpenFailed =>
+      'Kebijakan privasi tidak dapat dibuka. Coba lagi.';
+
+  @override
   String get clearCache => 'Bersihkan cache';
 
   @override

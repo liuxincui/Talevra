@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:talevra/app/theme/app_theme.dart';
 import 'package:talevra/features/home/home_tab.dart';
+import 'package:talevra/features/earning/earning_page.dart';
 import 'package:talevra/features/library/library_page.dart';
 import 'package:talevra/features/settings/settings_page.dart';
-import 'package:talevra/features/earning/earning_page.dart';
 import 'package:talevra/l10n/app_localizations.dart';
 
-/// Five-entry consumer shell matching the researched short-drama structure.
+/// Consumer shell with a dedicated full-screen feed and rewards destination.
 class HomePage extends StatefulWidget {
   final int initialTab;
 
@@ -19,11 +18,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late int _index;
-  final List<Widget> _tabs = const [
-    HomeTab(),
-    EarningPage(),
-    LibraryPage(),
-    SettingsPage(),
+  int _rewardsRevision = 0;
+
+  List<Widget> get _tabs => [
+    const HomeTab(),
+    EarningPage(key: ValueKey(_rewardsRevision)),
+    const LibraryPage(),
+    const SettingsPage(),
   ];
 
   @override
@@ -42,10 +43,13 @@ class _HomePageState extends State<HomePage> {
 
   void _select(int index) {
     if (index == 1) {
-      context.push('/player/featured');
+      context.push('/player/feed?mode=feed');
       return;
     }
-    setState(() => _index = index > 1 ? index - 1 : index);
+    setState(() {
+      if (index == 2) _rewardsRevision += 1;
+      _index = index > 1 ? index - 1 : index;
+    });
   }
 
   int get _selectedDestination => _index == 0 ? 0 : _index + 1;
@@ -71,7 +75,7 @@ class _HomePageState extends State<HomePage> {
           ),
           NavigationDestination(
             icon: const Icon(Icons.paid_outlined),
-            selectedIcon: const Icon(Icons.paid, color: AppPalette.yellow),
+            selectedIcon: const Icon(Icons.paid, color: Color(0xFFFFC72C)),
             label: l.rewardsTab,
           ),
           NavigationDestination(

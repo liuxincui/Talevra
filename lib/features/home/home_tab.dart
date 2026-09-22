@@ -423,8 +423,8 @@ class _DramaCard extends StatelessWidget {
                   ),
                 if (drama.tags.any((tag) => tag.trim().toLowerCase() == 'hot'))
                   Positioned(
-                    right: 4,
-                    top: 5,
+                    right: 3,
+                    top: 3,
                     child: Container(
                       width: 39,
                       height: 12,
@@ -433,12 +433,15 @@ class _DramaCard extends StatelessWidget {
                         color: const Color(0xFFFA0194),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        'HOT',
-                        style: TextStyle(
-                          fontSize: 10,
-                          height: 1,
-                          color: Colors.white,
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '🔥HOT',
+                          style: TextStyle(
+                            fontSize: 10,
+                            height: 1,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -478,12 +481,10 @@ class _DramaCard extends StatelessWidget {
 class _TaskProgress extends StatelessWidget {
   final String reward;
   final String dramaTitle;
-  final String coins;
   final String currency;
   const _TaskProgress({
     required this.reward,
     required this.dramaTitle,
-    required this.coins,
     required this.currency,
   });
 
@@ -548,11 +549,15 @@ class _TaskProgress extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Text(
-                  coins,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                Image.asset(
+                  'assets/ui_slices/主页_展示_slices/mipmap-mdpi/icon_cash.png',
+                  width: 34,
+                  height: 34,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/icons/cash.png',
+                    width: 34,
+                    height: 34,
                   ),
                 ),
                 const Spacer(),
@@ -593,21 +598,19 @@ class _HomeHeader extends StatelessWidget {
     child: Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 7, 12, 6),
+          padding: const EdgeInsets.fromLTRB(12, 21.81, 12, 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _TaskProgress(
                 reward: 'Rp 37.520',
                 dramaTitle: 'Title ABCD ABAG',
-                coins: '12,000',
                 currency: currency,
               ),
               SizedBox(width: 8),
               _TaskProgress(
                 reward: 'Rp 37.520',
                 dramaTitle: 'Title ABCD ABAG',
-                coins: '12,000',
                 currency: currency,
               ),
             ],
@@ -747,7 +750,7 @@ class _DramaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: 14),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -757,16 +760,13 @@ class _DramaSection extends StatelessWidget {
               builder: (_) => _DramaListPage(title: name, dramas: dramas),
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+          child: SizedBox(
+            height: 29,
             child: Row(
               children: [
                 Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  '🔥$name',
+                  style: const TextStyle(fontSize: 17, color: Colors.white),
                 ),
                 const Spacer(),
                 const Icon(Icons.chevron_right_rounded, color: Colors.white70),
@@ -774,10 +774,10 @@ class _DramaSection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 5),
         SizedBox(
-          height: 220,
+          height: 203,
           child: ListView.separated(
+            key: PageStorageKey<String>('home-category-$name'),
             scrollDirection: Axis.horizontal,
             itemCount: dramas.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talevra/features/home/home_tab.dart';
 import 'package:talevra/features/earning/earning_page.dart';
-import 'package:talevra/features/library/library_page.dart';
 import 'package:talevra/features/settings/settings_page.dart';
 import 'package:talevra/l10n/app_localizations.dart';
 
@@ -23,7 +22,6 @@ class _HomePageState extends State<HomePage> {
   List<Widget> get _tabs => [
     const HomeTab(),
     EarningPage(key: ValueKey(_rewardsRevision)),
-    const LibraryPage(),
     const SettingsPage(),
   ];
 
@@ -48,11 +46,19 @@ class _HomePageState extends State<HomePage> {
     }
     setState(() {
       if (index == 2) _rewardsRevision += 1;
-      _index = index > 1 ? index - 1 : index;
+      _index = switch (index) {
+        2 => 1,
+        3 => 2,
+        _ => 0,
+      };
     });
   }
 
-  int get _selectedDestination => _index == 0 ? 0 : _index + 1;
+  int get _selectedDestination => switch (_index) {
+    1 => 2,
+    2 => 3,
+    _ => 0,
+  };
 
   Widget _sliceIcon(String path) => Image.asset(
     path,
@@ -97,11 +103,6 @@ class _HomePageState extends State<HomePage> {
               'assets/ui_slices/主页_活动_slices/mipmap-xhdpi/icon_nav_gift_on.png',
             ),
             label: l.rewardsTab,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.favorite_border_rounded),
-            selectedIcon: const Icon(Icons.favorite, color: Colors.white),
-            label: l.history,
           ),
           NavigationDestination(
             icon: _sliceIcon(

@@ -48,7 +48,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return DecoratedBox(
       decoration: const BoxDecoration(gradient: AppPalette.gradient),
       child: ListView(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.only(bottom: 24),
         children: [
           SafeArea(
             bottom: false,
@@ -60,10 +60,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          l.guestViewer,
-                          style: const TextStyle(
-                            fontSize: 26,
+                        const Text(
+                          'LOGO',
+                          style: TextStyle(
+                            fontSize: 14,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -78,92 +78,46 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       ],
                     ),
                   ),
-                  const CircleAvatar(
-                    radius: 43,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, color: AppPalette.pink, size: 54),
+                  const Icon(
+                    Icons.account_circle_rounded,
+                    size: 42,
+                    color: Colors.white70,
                   ),
                 ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
             child: _CoinAssetCard(
               coins: wallet?.coins ?? 0,
               onTap: () => context.push('/earning'),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 22, 18, 10),
-            child: Text(
-              l.settingsTab,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-            ),
+          _HistoryPreview(onTap: () => context.push('/player/feed?mode=feed')),
+          const SizedBox(height: 10),
+          _ProfileRow(
+            icon: Icons.folder_open_outlined,
+            label: l.history,
+            onTap: () => context.push('/player/feed?mode=feed'),
           ),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            crossAxisCount: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: .94,
-            children: [
-              _ProfileSetting(
-                icon: Icons.cleaning_services_outlined,
-                title: l.clearCache,
-                subtitle: _cacheSize,
-                onTap: _clearCache,
-              ),
-              _ProfileSetting(
-                icon: Icons.language,
-                title: l.language,
-                subtitle:
-                    _languages[locale.languageCode] ?? locale.languageCode,
-                onTap: _showLanguagePicker,
-              ),
-              _ProfileSetting(
-                icon: Icons.high_quality_outlined,
-                title: l.videoQuality,
-                subtitle: _qualityLabel(l, _quality),
-                onTap: _showQualityPicker,
-              ),
-              _ProfileSetting(
-                icon: Icons.info_outline,
-                title: l.aboutNova,
-                subtitle: l.versionLabel,
-                onTap: _showAbout,
-              ),
-              _ProfileSetting(
-                icon: Icons.privacy_tip_outlined,
-                title: l.privacyPolicy,
-                subtitle: '',
-                onTap: _openPrivacyPolicy,
-              ),
-              _ProfileSetting(
-                icon: _autoplay
-                    ? Icons.play_circle_fill
-                    : Icons.play_circle_outline,
-                title: l.autoplayNext,
-                subtitle: _autoplay ? l.onLabel : l.offLabel,
-                onTap: () => setState(() => _autoplay = !_autoplay),
-              ),
-              _ProfileSetting(
-                icon: _wifiOnly ? Icons.wifi : Icons.network_cell,
-                title: l.downloadWifiOnly,
-                subtitle: _wifiOnly ? l.onLabel : l.offLabel,
-                onTap: () => setState(() => _wifiOnly = !_wifiOnly),
-              ),
-              _ProfileSetting(
-                icon: Icons.help_outline,
-                title: l.helpSupport,
-                subtitle: '',
-                onTap: _showHelp,
-              ),
-            ],
+          _ProfileRow(
+            icon: Icons.help_outline,
+            label: l.helpSupport,
+            onTap: _showHelp,
           ),
-          const SizedBox(height: 34),
+          _ProfileRow(
+            icon: Icons.language,
+            label: l.language,
+            trailing: _languages[locale.languageCode] ?? locale.languageCode,
+            onTap: _showLanguagePicker,
+          ),
+          _ProfileRow(
+            icon: Icons.cleaning_services_outlined,
+            label: l.clearCache,
+            trailing: _cacheSize,
+            onTap: _clearCache,
+          ),
         ],
       ),
     );
@@ -421,6 +375,119 @@ class _ProfileSetting extends StatelessWidget {
         ],
       ),
     ),
+  );
+}
+
+class _HistoryPreview extends StatelessWidget {
+  final VoidCallback onTap;
+  const _HistoryPreview({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.history_rounded, size: 17),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'My history',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 18),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 125,
+            child: Row(
+              children: List.generate(
+                3,
+                (index) => Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: index == 2 ? 0 : 7),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.asset(
+                              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_home_on.png',
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (_, __, ___) =>
+                                  const ColoredBox(color: AppPalette.card),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'No Longer the ...',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.white.withValues(alpha: .8),
+                          ),
+                        ),
+                        const Text(
+                          'Episode 1',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: AppPalette.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ProfileRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? trailing;
+  final VoidCallback onTap;
+  const _ProfileRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    dense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+    leading: Icon(icon, size: 20),
+    title: Text(label, style: const TextStyle(fontSize: 12)),
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (trailing != null)
+          Text(
+            trailing!,
+            style: const TextStyle(fontSize: 10, color: AppPalette.muted),
+          ),
+        const SizedBox(width: 8),
+        const Icon(Icons.chevron_right, size: 18),
+      ],
+    ),
+    onTap: onTap,
   );
 }
 

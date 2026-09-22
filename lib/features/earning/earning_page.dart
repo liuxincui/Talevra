@@ -48,13 +48,13 @@ class _EarningPageState extends ConsumerState<EarningPage> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 16, 18),
+              padding: const EdgeInsets.fromLTRB(14, 18, 14, 10),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   l?.rewardsTab ?? 'Rewards',
                   style: const TextStyle(
-                    fontSize: 26,
+                    fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -66,10 +66,15 @@ class _EarningPageState extends ConsumerState<EarningPage> {
                     ref.read(earningControllerProvider.notifier).load(),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _ActivityHero(
+                        coins: state.wallet?.coins ?? 955580,
+                        onWatch: () => context.push('/player/feed?mode=feed'),
+                      ),
+                      const SizedBox(height: 12),
                       _CashoutCard(
                         coins: state.wallet?.coins ?? 0,
                         label: l?.availableBalance ?? 'Available balance',
@@ -272,6 +277,92 @@ class _EarningPageState extends ConsumerState<EarningPage> {
   void _message(String message) => ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text(message)));
+}
+
+class _ActivityHero extends StatelessWidget {
+  final int coins;
+  final VoidCallback onWatch;
+  const _ActivityHero({required this.coins, required this.onWatch});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFF211B20),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: Colors.white10),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Falling For my ESTRANGED WIFE',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Title ABCD',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.white.withValues(alpha: .65),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: List.generate(
+            6,
+            (index) => Expanded(
+              child: Container(
+                margin: EdgeInsets.only(right: index == 5 ? 0 : 4),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: index == 0
+                      ? const Color(0xFFFF4F72)
+                      : const Color(0xFF3D3338),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.savings_rounded,
+                      size: 15,
+                      color: Color(0xFFB7F57B),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      index == 0 ? '10,000' : '0',
+                      style: const TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 36,
+          child: FilledButton(
+            onPressed: onWatch,
+            child: const Text('Ambit Ganda'),
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          'Rp ${CoinTool.format(coins)}',
+          style: const TextStyle(
+            color: Color(0xFFFFD65A),
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _DailyProgress extends StatelessWidget {

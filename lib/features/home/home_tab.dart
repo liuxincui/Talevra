@@ -180,11 +180,11 @@ class _HomeTabState extends State<HomeTab> {
           SliverAppBar(
             pinned: true,
             toolbarHeight: 56,
-            backgroundColor: AppPalette.purple.withValues(alpha: .92),
+            backgroundColor: const Color(0xFF0A0B0F),
             titleSpacing: 16,
             title: const Text(
               'Talevra',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
             ),
             actions: [
               const SizedBox(width: 132, child: _BalancePill(coins: 72150)),
@@ -255,10 +255,10 @@ class _HomeTabState extends State<HomeTab> {
                     itemCount: visible.length,
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 20,
-                          mainAxisSpacing: 0,
-                          childAspectRatio: .50,
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: .61,
                         ),
                     itemBuilder: (_, i) =>
                         _DramaCard(drama: visible[i], index: i),

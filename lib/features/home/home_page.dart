@@ -79,37 +79,37 @@ class _HomePageState extends State<HomePage> {
         destinations: [
           NavigationDestination(
             icon: _sliceIcon(
-              'assets/ui_slices/控件状态/mipmap-xhdpi/icon_nav_home_off.png',
+              'assets/icons/home_off.png',
             ),
             selectedIcon: _sliceIcon(
-              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_home_on.png',
+              'assets/icons/home_on.png',
             ),
             label: l.homeTab,
           ),
           NavigationDestination(
             icon: _sliceIcon(
-              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_watch_off.png',
+              'assets/icons/watch_off.png',
             ),
             selectedIcon: _sliceIcon(
-              'assets/ui_slices/主页_观看_slices/mipmap-xhdpi/icon_nav_watch_on.png',
+              'assets/icons/watch_on.png',
             ),
             label: l.shortsTab,
           ),
           NavigationDestination(
             icon: _sliceIcon(
-              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_gift_off.png',
+              'assets/icons/gift_off.png',
             ),
             selectedIcon: _sliceIcon(
-              'assets/ui_slices/主页_活动_slices/mipmap-xhdpi/icon_nav_gift_on.png',
+              'assets/icons/gift_on.png',
             ),
             label: l.rewardsTab,
           ),
           NavigationDestination(
             icon: _sliceIcon(
-              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_mine_off.png',
+              'assets/icons/mine_off.png',
             ),
             selectedIcon: _sliceIcon(
-              'assets/ui_slices/主页_我的_slices/mipmap-xhdpi/icon_nav_mine_on.png',
+              'assets/icons/mine_on.png',
             ),
             label: l.profileTab,
           ),

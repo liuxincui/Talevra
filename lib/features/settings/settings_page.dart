@@ -419,7 +419,7 @@ class _HistoryPreview extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: Image.asset(
-                              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_home_on.png',
+                      'assets/icons/home_on.png',
                               fit: BoxFit.cover,
                               width: double.infinity,
                               errorBuilder: (_, __, ___) =>

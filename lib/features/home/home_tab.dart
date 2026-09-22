@@ -258,7 +258,9 @@ class _HomeTabState extends State<HomeTab> {
                           crossAxisCount: 3,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 12,
-                          childAspectRatio: .61,
+                          // Reserve room for the poster, title and metadata so
+                          // the card never paints past its grid cell.
+                          childAspectRatio: .50,
                         ),
                     itemBuilder: (_, i) =>
                         _DramaCard(drama: visible[i], index: i),

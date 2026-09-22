@@ -8,6 +8,7 @@ class Drama {
   final String id;
   final String title;
   final String genre;
+  final List<String> tags;
   final int episodes;
   final Color color;
   final String coverImage;
@@ -18,6 +19,7 @@ class Drama {
     this.episodes,
     this.color, {
     this.coverImage = '',
+    this.tags = const [],
   });
 
   factory Drama.fromMap(Map<Object?, Object?> map) => Drama(
@@ -27,6 +29,9 @@ class Drama {
     (map['episodes'] as num?)?.toInt() ?? 0,
     const Color(0xFF263B42),
     coverImage: map['coverImage']?.toString() ?? '',
+    tags:
+        (map['tags'] as List<Object?>?)?.whereType<String>().toList() ??
+        const [],
   );
 }
 
@@ -386,10 +391,29 @@ class _DramaCard extends StatelessWidget {
                 Positioned(
                   right: 5,
                   top: 5,
-                  child: const Icon(
-                    Icons.local_fire_department_rounded,
-                    size: 20,
-                    color: AppPalette.yellow,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF1596),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('🔥', style: TextStyle(fontSize: 13)),
+                        SizedBox(width: 2),
+                        Text(
+                          'HOT',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Positioned(
@@ -438,63 +462,50 @@ class _DramaCard extends StatelessWidget {
   );
 }
 
-class _BalancePill extends StatelessWidget {
-  final int coins;
-  const _BalancePill({required this.coins});
+class _TaskProgress extends StatelessWidget {
+  final String title;
+  final String amount;
+  const _TaskProgress({required this.title, required this.amount});
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 40,
-    padding: const EdgeInsets.symmetric(horizontal: 8),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE8DDE9),
-      border: Border.all(color: Colors.white70),
-      borderRadius: BorderRadius.circular(7),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset(
-          'assets/icons/cash.png',
-          width: 22,
-          height: 22,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(width: 5),
-        Expanded(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '$coins',
-              maxLines: 1,
-              style: const TextStyle(
-                color: Color(0xFF4B147B),
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      height: 57,
+      padding: const EdgeInsets.fromLTRB(7, 4, 8, 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF241245),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: Colors.white.withValues(alpha: .16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Color(0xFFD5C6E4),
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 5),
-          child: VerticalDivider(width: 1, indent: 9, endIndent: 9),
-        ),
-        const Expanded(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              r'$0.07',
-              maxLines: 1,
-              style: TextStyle(
-                color: Color(0xFFB0009D),
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
+          const Spacer(),
+          Row(
+            children: [
+              Image.asset('assets/icons/cash.png', width: 28, height: 28),
+              const Spacer(),
+              Text(
+                amount,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -518,11 +529,18 @@ class _HomeHeader extends StatelessWidget {
     child: Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 10, 10),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           child: Row(
-            children: [
-              const Spacer(),
-              const SizedBox(width: 132, child: _BalancePill(coins: 72150)),
+            children: const [
+              _TaskProgress(
+                title: 'Rp 37.520  Title ABCD ABAG',
+                amount: 'Rp 955.580',
+              ),
+              SizedBox(width: 8),
+              _TaskProgress(
+                title: 'Rp 37.520  Title ABCD ABAG',
+                amount: 'Rp 955.580',
+              ),
             ],
           ),
         ),
@@ -626,10 +644,26 @@ class _DramaSections extends StatelessWidget {
     final grouped = <({String name, List<Drama> dramas})>[];
     if (sections.isNotEmpty) {
       for (final entry in sections.entries) {
-        grouped.add((
-          name: localizedGenre(AppLocalizations.of(context)!, entry.key),
-          dramas: entry.value.take(8).toList(),
-        ));
+        final byTag = <String, List<Drama>>{};
+        for (final drama in entry.value) {
+          for (final tag in drama.tags) {
+            byTag.putIfAbsent(tag, () => []).add(drama);
+          }
+        }
+        if (byTag.isEmpty) {
+          grouped.add((
+            name: localizedGenre(AppLocalizations.of(context)!, entry.key),
+            dramas: entry.value.take(8).toList(),
+          ));
+        } else {
+          for (final tag in byTag.entries) {
+            grouped.add((
+              name:
+                  '${localizedGenre(AppLocalizations.of(context)!, entry.key)} · ${tag.key}',
+              dramas: tag.value.take(8).toList(),
+            ));
+          }
+        }
       }
     } else {
       for (final name in _categories) {

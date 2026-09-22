@@ -179,6 +179,7 @@ class MainActivity : FlutterActivity() {
                         "coverImage" to (drama.coverImage ?: ""),
                         "episodes" to drama.total,
                         "category" to (drama.categories?.firstOrNull()?.name ?: ""),
+                        "tags" to drama.tags.orEmpty().mapNotNull { it.name },
                     )
                 })
             }

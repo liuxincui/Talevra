@@ -404,30 +404,45 @@ class _DramaCard extends StatelessWidget {
                   ),
                 if (drama.tags.any((tag) => tag.trim().toLowerCase() == 'hot'))
                   Positioned(
-                    right: 5,
+                    right: 4,
                     top: 5,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
+                    child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF1596),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('🔥', style: TextStyle(fontSize: 13)),
-                          SizedBox(width: 2),
-                          Text(
-                            'HOT',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF2D73), Color(0xFFFF0FA7)],
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x66000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
                           ),
                         ],
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '🔥',
+                              style: TextStyle(fontSize: 18, height: 1),
+                            ),
+                            SizedBox(width: 3),
+                            Text(
+                              'HOT',
+                              style: TextStyle(
+                                fontSize: 17,
+                                height: 1,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -470,20 +485,21 @@ class _TaskProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 45,
+    width: 180,
+    height: 48,
     child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: 13,
+          height: 16,
           child: Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 9,
+              fontSize: 12,
               color: Color(0xFF4FD7FF),
               fontWeight: FontWeight.w800,
             ),
@@ -493,21 +509,30 @@ class _TaskProgress extends StatelessWidget {
         SizedBox(
           height: 30,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFF241245),
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: Colors.white.withValues(alpha: .16)),
+              color: const Color(0x73100F18),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0x40B2B2B2), width: .5),
             ),
             child: Row(
               children: [
-                Image.asset('assets/icons/cash.png', width: 24, height: 24),
+                Image.asset(
+                  'assets/ui_slices/主页_展示_slices/mipmap-mdpi/icon_cash.png',
+                  width: 34,
+                  height: 34,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/icons/cash.png',
+                    width: 24,
+                    height: 24,
+                  ),
+                ),
                 const Spacer(),
                 Text(
                   amount,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -538,21 +563,18 @@ class _HomeHeader extends StatelessWidget {
     child: Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+          padding: const EdgeInsets.fromLTRB(12, 7, 12, 6),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: const [
-              Expanded(
-                child: _TaskProgress(
-                  title: 'Rp 37.520  Title ABCD ABAG',
-                  amount: 'Rp 955.580',
-                ),
+              _TaskProgress(
+                title: 'Rp 37.520  Title ABCD ABAG',
+                amount: 'Rp 955.580',
               ),
               SizedBox(width: 8),
-              Expanded(
-                child: _TaskProgress(
-                  title: 'Rp 37.520  Title ABCD ABAG',
-                  amount: 'Rp 955.580',
-                ),
+              _TaskProgress(
+                title: 'Rp 37.520  Title ABCD ABAG',
+                amount: 'Rp 955.580',
               ),
             ],
           ),

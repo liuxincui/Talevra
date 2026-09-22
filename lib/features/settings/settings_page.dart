@@ -418,12 +418,24 @@ class _HistoryPreview extends StatelessWidget {
                         Expanded(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: Image.asset(
-                      'assets/icons/home_on.png',
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (_, __, ___) =>
-                                  const ColoredBox(color: AppPalette.card),
+                            child: DecoratedBox(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFE51C75),
+                                    Color(0xFF5E25A5),
+                                  ],
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.auto_stories_rounded,
+                                  size: 42,
+                                  color: Colors.white.withValues(alpha: .78),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -502,14 +514,14 @@ class _CoinAssetCard extends StatelessWidget {
     color: Colors.transparent,
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(8),
       child: Ink(
         padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFFE21BB7), Color(0xFF7B12D1)],
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: const [
             BoxShadow(
               color: Color(0x44000000),

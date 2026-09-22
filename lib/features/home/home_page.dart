@@ -69,12 +69,8 @@ class _HomePageState extends State<HomePage> {
   );
 
   Widget _navIcon(String path, bool selected) => Container(
-    width: selected ? 58 : 48,
+    width: 48,
     height: 34,
-    decoration: BoxDecoration(
-      color: selected ? const Color(0xFFFF00B8) : Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
-    ),
     alignment: Alignment.center,
     child: _sliceIcon(path),
   );

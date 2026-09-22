@@ -189,8 +189,6 @@ class _HomeTabState extends State<HomeTab> {
                 setState(() => _subCategory = 'All');
                 _loadDramas(id);
               },
-              subCategory: _subCategory,
-              onSubCategory: (value) => setState(() => _subCategory = value),
             ),
           ),
           SliverPadding(
@@ -236,24 +234,7 @@ class _HomeTabState extends State<HomeTab> {
                     child: Center(child: Text(l.noStoriesFound)),
                   )
                 else
-                  GridView.builder(
-                    padding: EdgeInsets.zero,
-                    primary: false,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: visible.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 12,
-                          // Reserve room for the poster, title and metadata so
-                          // the card never paints past its grid cell.
-                          childAspectRatio: .49,
-                        ),
-                    itemBuilder: (_, i) =>
-                        _DramaCard(drama: visible[i], index: i),
-                  ),
+                  _DramaSections(dramas: visible),
               ]),
             ),
           ),
@@ -381,18 +362,11 @@ class _DramaCard extends StatelessWidget {
                 Positioned(
                   right: 5,
                   top: 5,
-                  child: Container(
+                  child: Image.asset(
+                    'assets/icons/drama_cash.png',
                     width: 25,
                     height: 25,
-                    decoration: BoxDecoration(
-                      color: AppPalette.pink,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.card_giftcard,
-                      size: 16,
-                      color: AppPalette.yellow,
-                    ),
+                    fit: BoxFit.contain,
                   ),
                 ),
                 Positioned(
@@ -457,7 +431,12 @@ class _BalancePill extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.payments_rounded, color: Color(0xFF38A82F), size: 22),
+        Image.asset(
+          'assets/icons/cash.png',
+          width: 22,
+          height: 22,
+          fit: BoxFit.contain,
+        ),
         const SizedBox(width: 5),
         Expanded(
           child: FittedBox(
@@ -502,16 +481,12 @@ class _HomeHeader extends StatelessWidget {
   final List<Map<Object?, Object?>> categories;
   final int selectedId;
   final ValueChanged<int> onSelected;
-  final String subCategory;
-  final ValueChanged<String> onSubCategory;
 
   const _HomeHeader({
     required this.onSearch,
     required this.categories,
     required this.selectedId,
     required this.onSelected,
-    required this.subCategory,
-    required this.onSubCategory,
   });
 
   @override
@@ -530,11 +505,6 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 132, child: _BalancePill(coins: 72150)),
-              IconButton(
-                tooltip: 'Search',
-                onPressed: onSearch,
-                icon: const Icon(Icons.search_rounded, size: 27),
-              ),
             ],
           ),
         ),
@@ -542,66 +512,23 @@ class _HomeHeader extends StatelessWidget {
           categories: categories,
           selectedId: selectedId,
           onSelected: onSelected,
+          onSearch: onSearch,
         ),
-        _SubCategoryBar(selected: subCategory, onSelected: onSubCategory),
       ],
     ),
   );
-}
-
-class _SubCategoryBar extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onSelected;
-  const _SubCategoryBar({required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    const labels = [
-      'All',
-      'Romance',
-      'Revenge',
-      'CEO',
-      'Fantasy',
-      'Historical',
-      'Family',
-    ];
-    return SizedBox(
-      height: 35,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-        scrollDirection: Axis.horizontal,
-        itemCount: labels.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 18),
-        itemBuilder: (_, index) {
-          final label = labels[index];
-          final active = label == selected;
-          return GestureDetector(
-            onTap: () => onSelected(label),
-            child: Center(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                  color: active ? Colors.white : Colors.white54,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 }
 
 class _ChannelBar extends StatelessWidget {
   final List<Map<Object?, Object?>> categories;
   final int selectedId;
   final ValueChanged<int> onSelected;
+  final VoidCallback onSearch;
   const _ChannelBar({
     required this.categories,
     required this.selectedId,
     required this.onSelected,
+    required this.onSearch,
   });
 
   @override
@@ -616,39 +543,165 @@ class _ChannelBar extends StatelessWidget {
     final items = categories.isEmpty ? fallback : categories;
     return SizedBox(
       height: 48,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 24),
-        itemBuilder: (_, i) {
-          final id = (items[i]['id'] as num?)?.toInt() ?? -2;
-          final active = id == selectedId;
-          final label = switch (id) {
-            -2 => AppLocalizations.of(context)!.forYou,
-            -1 => AppLocalizations.of(context)!.newLabel,
-            _ => localizedGenre(
-              AppLocalizations.of(context)!,
-              '${items[i]['name'] ?? ''}',
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.only(left: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 24),
+              itemBuilder: (_, i) {
+                final id = (items[i]['id'] as num?)?.toInt() ?? -2;
+                final active = id == selectedId;
+                final label = switch (id) {
+                  -2 => AppLocalizations.of(context)!.forYou,
+                  -1 => AppLocalizations.of(context)!.newLabel,
+                  _ => localizedGenre(
+                    AppLocalizations.of(context)!,
+                    '${items[i]['name'] ?? ''}',
+                  ),
+                };
+                return InkWell(
+                  onTap: () => onSelected(id),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: active ? FontWeight.w900 : FontWeight.w500,
+                        color: active ? Colors.white : Colors.white70,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          };
-          return InkWell(
-            onTap: () => onSelected(id),
-            child: Center(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: active ? FontWeight.w900 : FontWeight.w500,
-                  color: active ? Colors.white : Colors.white70,
-                ),
-              ),
-            ),
-          );
-        },
+          ),
+          IconButton(
+            tooltip: 'Search',
+            onPressed: onSearch,
+            icon: const Icon(Icons.search_rounded, size: 27),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _DramaSections extends StatelessWidget {
+  final List<Drama> dramas;
+  const _DramaSections({required this.dramas});
+
+  static const _categories = [
+    'Romance',
+    'Revenge',
+    'CEO',
+    'Fantasy',
+    'Historical',
+    'Family',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final sections = <({String name, List<Drama> dramas})>[];
+    for (final name in _categories) {
+      final matching = dramas
+          .where(
+            (drama) => drama.genre.toLowerCase().contains(name.toLowerCase()),
+          )
+          .take(8)
+          .toList();
+      if (matching.isNotEmpty) sections.add((name: name, dramas: matching));
+    }
+    if (sections.isEmpty) {
+      sections.add((name: 'For You', dramas: dramas.take(8).toList()));
+    }
+    return Column(
+      children: [
+        for (final section in sections)
+          _DramaSection(name: section.name, dramas: section.dramas),
+      ],
+    );
+  }
+}
+
+class _DramaSection extends StatelessWidget {
+  final String name;
+  final List<Drama> dramas;
+  const _DramaSection({required this.name, required this.dramas});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 18),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => _DramaListPage(title: name, dramas: dramas),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 7),
+        SizedBox(
+          height: 254,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: dramas.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 9),
+            itemBuilder: (_, index) => SizedBox(
+              width: 128,
+              child: _DramaCard(drama: dramas[index], index: index),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DramaListPage extends StatelessWidget {
+  final String title;
+  final List<Drama> dramas;
+  const _DramaListPage({required this.title, required this.dramas});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: DecoratedBox(
+      decoration: const BoxDecoration(gradient: AppPalette.gradient),
+      child: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
+        itemCount: dramas.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 12,
+          childAspectRatio: .49,
+        ),
+        itemBuilder: (_, index) =>
+            _DramaCard(drama: dramas[index], index: index),
+      ),
+    ),
+  );
 }
 
 class _CornerBadge extends StatelessWidget {

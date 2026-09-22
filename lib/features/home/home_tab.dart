@@ -85,6 +85,17 @@ class _HomeTabState extends State<HomeTab> {
   String? _lastSdkLanguage;
   final _search = TextEditingController();
 
+  String _currencyValue(BuildContext context) {
+    return switch (Localizations.localeOf(context).languageCode) {
+      'pt' => 'R\$ 955,58',
+      'es' => 'MX\$ 955.58',
+      'id' => 'Rp 955.580',
+      'ja' => '¥955',
+      'ko' => '₩955',
+      _ => '\$955.58',
+    };
+  }
+
   @override
   void initState() {
     super.initState();
@@ -233,6 +244,7 @@ class _HomeTabState extends State<HomeTab> {
           SliverToBoxAdapter(
             child: _HomeHeader(
               onSearch: _showSearch,
+              currency: _currencyValue(context),
               categories: _categories,
               selectedId: _categoryId,
               onSelected: (id) {
@@ -241,7 +253,7 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 28),
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if (_loading)
@@ -384,10 +396,11 @@ class _DramaCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AspectRatio(
-          aspectRatio: .67,
+        SizedBox(
+          width: 120,
+          height: 168,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(6),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -412,42 +425,20 @@ class _DramaCard extends StatelessWidget {
                   Positioned(
                     right: 4,
                     top: 5,
-                    child: DecoratedBox(
+                    child: Container(
+                      width: 39,
+                      height: 12,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF2D73), Color(0xFFFF0FA7)],
-                        ),
+                        color: const Color(0xFFFA0194),
                         borderRadius: BorderRadius.circular(4),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x66000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
                       ),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '🔥',
-                              style: TextStyle(fontSize: 18, height: 1),
-                            ),
-                            SizedBox(width: 3),
-                            Text(
-                              'HOT',
-                              style: TextStyle(
-                                fontSize: 17,
-                                height: 1,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
+                      child: const Text(
+                        'HOT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          height: 1,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -468,7 +459,7 @@ class _DramaCard extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         Text(
           drama.title,
           maxLines: 2,
@@ -487,11 +478,13 @@ class _DramaCard extends StatelessWidget {
 class _TaskProgress extends StatelessWidget {
   final String reward;
   final String dramaTitle;
-  final String amount;
+  final String coins;
+  final String currency;
   const _TaskProgress({
     required this.reward,
     required this.dramaTitle,
-    required this.amount,
+    required this.coins,
+    required this.currency,
   });
 
   @override
@@ -503,14 +496,14 @@ class _TaskProgress extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Align(
-          alignment: Alignment.center,
+          alignment: Alignment.centerRight,
           child: Container(
             width: 139,
             height: 12,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
                 colors: [Color(0x0FFFFFFF), Color(0x54FFFFFF)],
               ),
               borderRadius: BorderRadius.circular(6),
@@ -555,21 +548,18 @@ class _TaskProgress extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Image.asset(
-                  'assets/ui_slices/主页_展示_slices/mipmap-mdpi/icon_cash.png',
-                  width: 34,
-                  height: 34,
-                  errorBuilder: (_, __, ___) => Image.asset(
-                    'assets/icons/cash.png',
-                    width: 24,
-                    height: 24,
+                Text(
+                  coins,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const Spacer(),
                 Text(
-                  amount,
+                  currency,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -584,12 +574,14 @@ class _TaskProgress extends StatelessWidget {
 
 class _HomeHeader extends StatelessWidget {
   final VoidCallback onSearch;
+  final String currency;
   final List<Map<Object?, Object?>> categories;
   final int selectedId;
   final ValueChanged<int> onSelected;
 
   const _HomeHeader({
     required this.onSearch,
+    required this.currency,
     required this.categories,
     required this.selectedId,
     required this.onSelected,
@@ -604,17 +596,19 @@ class _HomeHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 7, 12, 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               _TaskProgress(
                 reward: 'Rp 37.520',
                 dramaTitle: 'Title ABCD ABAG',
-                amount: 'Rp 955.580',
+                coins: '12,000',
+                currency: currency,
               ),
               SizedBox(width: 8),
               _TaskProgress(
                 reward: 'Rp 37.520',
                 dramaTitle: 'Title ABCD ABAG',
-                amount: 'Rp 955.580',
+                coins: '12,000',
+                currency: currency,
               ),
             ],
           ),
@@ -753,7 +747,7 @@ class _DramaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
+    padding: const EdgeInsets.only(bottom: 10),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -780,15 +774,15 @@ class _DramaSection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 5),
         SizedBox(
-          height: 254,
+          height: 220,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: dramas.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 9),
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (_, index) => SizedBox(
-              width: 128,
+              width: 120,
               child: _DramaCard(drama: dramas[index], index: index),
             ),
           ),
@@ -809,7 +803,7 @@ class _DramaListPage extends StatelessWidget {
     body: DecoratedBox(
       decoration: const BoxDecoration(gradient: AppPalette.gradient),
       child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         itemCount: dramas.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,

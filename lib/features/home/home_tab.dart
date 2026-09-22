@@ -469,23 +469,29 @@ class _TaskProgress extends StatelessWidget {
   const _TaskProgress({required this.title, required this.amount});
 
   @override
-  Widget build(BuildContext context) => Expanded(
+  Widget build(BuildContext context) => SizedBox(
+    height: 66,
     child: Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF4FD7FF),
-            fontWeight: FontWeight.w800,
+        SizedBox(
+          height: 18,
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Color(0xFF4FD7FF),
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         const SizedBox(height: 3),
-        Expanded(
+        SizedBox(
+          height: 45,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 7),
             decoration: BoxDecoration(
@@ -535,14 +541,18 @@ class _HomeHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           child: Row(
             children: const [
-              _TaskProgress(
-                title: 'Rp 37.520  Title ABCD ABAG',
-                amount: 'Rp 955.580',
+              Expanded(
+                child: _TaskProgress(
+                  title: 'Rp 37.520  Title ABCD ABAG',
+                  amount: 'Rp 955.580',
+                ),
               ),
               SizedBox(width: 8),
-              _TaskProgress(
-                title: 'Rp 37.520  Title ABCD ABAG',
-                amount: 'Rp 955.580',
+              Expanded(
+                child: _TaskProgress(
+                  title: 'Rp 37.520  Title ABCD ABAG',
+                  amount: 'Rp 955.580',
+                ),
               ),
             ],
           ),

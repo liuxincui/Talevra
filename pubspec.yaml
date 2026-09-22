@@ -81,6 +81,8 @@ flutter:
   assets:
     - assets/icons/
     - assets/ui_slices/
+    - assets/ui_slices/主页_我的_slices/mipmap-mdpi/
+    - assets/ui_slices/主页_观看_slices/mipmap-mdpi/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -91,26 +91,26 @@ class _HomePageState extends State<HomePage> {
                 _navItem(
                   0,
                   l.homeTab,
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_home_off.png',
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_home_on.png',
+                  'assets/icons/home_off.png',
+                  'assets/icons/home_on.png',
                 ),
                 _navItem(
                   1,
                   l.shortsTab,
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_watch_off.png',
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_watch_on.png',
+                  'assets/icons/watch_off.png',
+                  'assets/icons/watch_on.png',
                 ),
                 _navItem(
                   2,
                   l.rewardsTab,
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_gift_off.png',
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_gift_on.png',
+                  'assets/icons/gift_off.png',
+                  'assets/icons/gift_on.png',
                 ),
                 _navItem(
                   3,
                   l.profileTab,
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_mine_off.png',
-                  'assets/ui_slices/控件状态/mipmap-mdpi/icon_nav_mine_on.png',
+                  'assets/icons/mine_off.png',
+                  'assets/icons/mine_on.png',
                 ),
               ],
             ),
@@ -128,23 +128,14 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: 56,
-              height: 34,
-              decoration: BoxDecoration(
-                color: selected ? const Color(0xFFFF3D9E) : Colors.transparent,
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: _navIcon(selected ? on : off, selected),
-            ),
+            _navIcon(selected ? on : off, selected),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
-                color: selected ? Colors.white : const Color(0xFF8D919B),
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                fontSize: 11,
+                color: selected ? Colors.white : Colors.white70,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],

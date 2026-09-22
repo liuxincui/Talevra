@@ -82,7 +82,6 @@ class _HomeTabState extends State<HomeTab> {
   bool _loading = true;
   String? _error;
   String _query = '';
-  String _subCategory = 'All';
   String? _lastSdkLanguage;
   final _search = TextEditingController();
 
@@ -194,30 +193,38 @@ class _HomeTabState extends State<HomeTab> {
     final visible = _dramas
         .where(
           (d) =>
-              (_subCategory == 'All' ||
-                  d.genre.toLowerCase().contains(_subCategory.toLowerCase())) &&
-              (_query.isEmpty ||
-                  '${d.title} ${d.genre}'.toLowerCase().contains(
-                    _query.toLowerCase(),
-                  )),
+              _query.isEmpty ||
+              '${d.title} ${d.genre}'.toLowerCase().contains(
+                _query.toLowerCase(),
+              ),
         )
         .toList();
-    final tagSections = <String, List<Drama>>{};
-    final sectionSource = _categoryId == -2
-        ? _categoryDramas.values.expand((items) => items)
-        : visible;
-    for (final drama in sectionSource) {
-      final tags = drama.tags
-          .map((tag) => tag.trim())
-          .where((tag) => tag.isNotEmpty)
-          .toSet();
-      if (tags.isEmpty) {
-        tagSections.putIfAbsent('All', () => []).add(drama);
-      } else {
-        for (final tag in tags) {
-          tagSections.putIfAbsent(tag, () => []).add(drama);
+    final categorySections = <String, List<Drama>>{};
+    if (_categoryId == -2) {
+      for (final category in _categories) {
+        final name = '${category['name'] ?? ''}'.trim();
+        final dramas = _categoryDramas[name]
+            ?.where(
+              (d) =>
+                  _query.isEmpty ||
+                  '${d.title} ${d.genre}'.toLowerCase().contains(
+                    _query.toLowerCase(),
+                  ),
+            )
+            .toList();
+        if (name.isNotEmpty && dramas != null && dramas.isNotEmpty) {
+          categorySections[name] = dramas;
         }
       }
+    } else {
+      final selectedName = _categories
+          .where((item) => (item['id'] as num?)?.toInt() == _categoryId)
+          .map((item) => '${item['name'] ?? ''}'.trim())
+          .firstWhere((name) => name.isNotEmpty, orElse: () => 'All');
+      categorySections[selectedName] = visible;
+    }
+    if (categorySections.isEmpty && visible.isNotEmpty) {
+      categorySections['All'] = visible;
     }
     return DecoratedBox(
       decoration: const BoxDecoration(gradient: AppPalette.gradient),
@@ -229,7 +236,6 @@ class _HomeTabState extends State<HomeTab> {
               categories: _categories,
               selectedId: _categoryId,
               onSelected: (id) {
-                setState(() => _subCategory = 'All');
                 _loadDramas(id);
               },
             ),
@@ -277,7 +283,7 @@ class _HomeTabState extends State<HomeTab> {
                     child: Center(child: Text(l.noStoriesFound)),
                   )
                 else
-                  _DramaSections(dramas: visible, sections: tagSections),
+                  _DramaSections(dramas: visible, sections: categorySections),
               ]),
             ),
           ),
@@ -479,9 +485,14 @@ class _DramaCard extends StatelessWidget {
 }
 
 class _TaskProgress extends StatelessWidget {
-  final String title;
+  final String reward;
+  final String dramaTitle;
   final String amount;
-  const _TaskProgress({required this.title, required this.amount});
+  const _TaskProgress({
+    required this.reward,
+    required this.dramaTitle,
+    required this.amount,
+  });
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -491,17 +502,44 @@ class _TaskProgress extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          height: 16,
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF4FD7FF),
-              fontWeight: FontWeight.w800,
+        Align(
+          alignment: Alignment.center,
+          child: Container(
+            width: 139,
+            height: 12,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x0FFFFFFF), Color(0x54FFFFFF)],
+              ),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  reward,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    height: 1,
+                    color: Color(0xFF60E7FF),
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: Text(
+                    dramaTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      height: 1,
+                      color: Color(0xFFECEBF0),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -568,12 +606,14 @@ class _HomeHeader extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: const [
               _TaskProgress(
-                title: 'Rp 37.520  Title ABCD ABAG',
+                reward: 'Rp 37.520',
+                dramaTitle: 'Title ABCD ABAG',
                 amount: 'Rp 955.580',
               ),
               SizedBox(width: 8),
               _TaskProgress(
-                title: 'Rp 37.520  Title ABCD ABAG',
+                reward: 'Rp 37.520',
+                dramaTitle: 'Title ABCD ABAG',
                 amount: 'Rp 955.580',
               ),
             ],
@@ -671,6 +711,8 @@ class _ChannelBar extends StatelessWidget {
           IconButton(
             tooltip: 'Search',
             onPressed: onSearch,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 40, height: 35),
             icon: const Icon(Icons.search_rounded, size: 27),
           ),
         ],

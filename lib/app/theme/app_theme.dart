@@ -15,7 +15,7 @@ class AppPalette {
   static const gradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFF0A0B0F), Color(0xFF513184)],
+    colors: [Color(0xFF513184), Color(0xFF0A0B0F)],
   );
 }
 

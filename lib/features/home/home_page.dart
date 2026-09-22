@@ -54,6 +54,14 @@ class _HomePageState extends State<HomePage> {
 
   int get _selectedDestination => _index == 0 ? 0 : _index + 1;
 
+  Widget _sliceIcon(String path) => Image.asset(
+    path,
+    width: 24,
+    height: 24,
+    fit: BoxFit.contain,
+    errorBuilder: (_, __, ___) => const Icon(Icons.circle_outlined),
+  );
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -64,18 +72,30 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: _select,
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home),
+            icon: _sliceIcon(
+              'assets/ui_slices/控件状态/mipmap-xhdpi/icon_nav_home_off.png',
+            ),
+            selectedIcon: _sliceIcon(
+              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_home_on.png',
+            ),
             label: l.homeTab,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.smart_display_outlined),
-            selectedIcon: const Icon(Icons.smart_display, color: Colors.white),
+            icon: _sliceIcon(
+              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_watch_off.png',
+            ),
+            selectedIcon: _sliceIcon(
+              'assets/ui_slices/主页_观看_slices/mipmap-xhdpi/icon_nav_watch_on.png',
+            ),
             label: l.shortsTab,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.paid_outlined),
-            selectedIcon: const Icon(Icons.paid, color: Color(0xFFFFC72C)),
+            icon: _sliceIcon(
+              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_gift_off.png',
+            ),
+            selectedIcon: _sliceIcon(
+              'assets/ui_slices/主页_活动_slices/mipmap-xhdpi/icon_nav_gift_on.png',
+            ),
             label: l.rewardsTab,
           ),
           NavigationDestination(
@@ -84,8 +104,12 @@ class _HomePageState extends State<HomePage> {
             label: l.history,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.account_circle_outlined),
-            selectedIcon: const Icon(Icons.account_circle, color: Colors.white),
+            icon: _sliceIcon(
+              'assets/ui_slices/主页_展示_slices/mipmap-xhdpi/icon_nav_mine_off.png',
+            ),
+            selectedIcon: _sliceIcon(
+              'assets/ui_slices/主页_我的_slices/mipmap-xhdpi/icon_nav_mine_on.png',
+            ),
             label: l.profileTab,
           ),
         ],

@@ -13,10 +13,9 @@ class AppPalette {
   static const card = Color(0xFF26252A);
   static const muted = Color(0xFFAAA4B5);
   static const gradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF9B00DC), Color(0xFF07527A), Color(0xFF17002C)],
-    stops: [0, .56, 1],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF0A0B0F), Color(0xFF513184)],
   );
 }
 

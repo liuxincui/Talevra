@@ -202,6 +202,23 @@ class _HomeTabState extends State<HomeTab> {
                   )),
         )
         .toList();
+    final tagSections = <String, List<Drama>>{};
+    final sectionSource = _categoryId == -2
+        ? _categoryDramas.values.expand((items) => items)
+        : visible;
+    for (final drama in sectionSource) {
+      final tags = drama.tags
+          .map((tag) => tag.trim())
+          .where((tag) => tag.isNotEmpty)
+          .toSet();
+      if (tags.isEmpty) {
+        tagSections.putIfAbsent('All', () => []).add(drama);
+      } else {
+        for (final tag in tags) {
+          tagSections.putIfAbsent(tag, () => []).add(drama);
+        }
+      }
+    }
     return DecoratedBox(
       decoration: const BoxDecoration(gradient: AppPalette.gradient),
       child: CustomScrollView(
@@ -260,10 +277,7 @@ class _HomeTabState extends State<HomeTab> {
                     child: Center(child: Text(l.noStoriesFound)),
                   )
                 else
-                  _DramaSections(
-                    dramas: visible,
-                    sections: _categoryId == -2 ? _categoryDramas : const {},
-                  ),
+                  _DramaSections(dramas: visible, sections: tagSections),
               ]),
             ),
           ),
@@ -388,34 +402,35 @@ class _DramaCard extends StatelessWidget {
                       )!.newLabel.toUpperCase(),
                     ),
                   ),
-                Positioned(
-                  right: 5,
-                  top: 5,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF1596),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('🔥', style: TextStyle(fontSize: 13)),
-                        SizedBox(width: 2),
-                        Text(
-                          'HOT',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
+                if (drama.tags.any((tag) => tag.trim().toLowerCase() == 'hot'))
+                  Positioned(
+                    right: 5,
+                    top: 5,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF1596),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('🔥', style: TextStyle(fontSize: 13)),
+                          SizedBox(width: 2),
+                          Text(
+                            'HOT',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 Positioned(
                   right: 6,
                   bottom: 6,
@@ -443,20 +458,6 @@ class _DramaCard extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 5),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .14),
-            borderRadius: BorderRadius.circular(2),
-          ),
-          child: Text(
-            localizedGenre(AppLocalizations.of(context)!, drama.genre),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 9, color: Color(0xFFE4DDEA)),
-          ),
-        ),
       ],
     ),
   );
@@ -469,43 +470,45 @@ class _TaskProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Container(
-      height: 57,
-      padding: const EdgeInsets.fromLTRB(7, 4, 8, 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF241245),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: Colors.white.withValues(alpha: .16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFFD5C6E4),
-              fontWeight: FontWeight.w700,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Color(0xFF4FD7FF),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFF241245),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: Colors.white.withValues(alpha: .16)),
+            ),
+            child: Row(
+              children: [
+                Image.asset('assets/icons/cash.png', width: 28, height: 28),
+                const Spacer(),
+                Text(
+                  amount,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
-          const Spacer(),
-          Row(
-            children: [
-              Image.asset('assets/icons/cash.png', width: 28, height: 28),
-              const Spacer(),
-              Text(
-                amount,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }
@@ -630,50 +633,12 @@ class _DramaSections extends StatelessWidget {
   final Map<String, List<Drama>> sections;
   const _DramaSections({required this.dramas, this.sections = const {}});
 
-  static const _categories = [
-    'Romance',
-    'Revenge',
-    'CEO',
-    'Fantasy',
-    'Historical',
-    'Family',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final grouped = <({String name, List<Drama> dramas})>[];
     if (sections.isNotEmpty) {
       for (final entry in sections.entries) {
-        final byTag = <String, List<Drama>>{};
-        for (final drama in entry.value) {
-          for (final tag in drama.tags) {
-            byTag.putIfAbsent(tag, () => []).add(drama);
-          }
-        }
-        if (byTag.isEmpty) {
-          grouped.add((
-            name: localizedGenre(AppLocalizations.of(context)!, entry.key),
-            dramas: entry.value.take(8).toList(),
-          ));
-        } else {
-          for (final tag in byTag.entries) {
-            grouped.add((
-              name:
-                  '${localizedGenre(AppLocalizations.of(context)!, entry.key)} · ${tag.key}',
-              dramas: tag.value.take(8).toList(),
-            ));
-          }
-        }
-      }
-    } else {
-      for (final name in _categories) {
-        final matching = dramas
-            .where(
-              (drama) => drama.genre.toLowerCase().contains(name.toLowerCase()),
-            )
-            .take(8)
-            .toList();
-        if (matching.isNotEmpty) grouped.add((name: name, dramas: matching));
+        grouped.add((name: entry.key, dramas: entry.value.take(8).toList()));
       }
     }
     if (grouped.isEmpty) {

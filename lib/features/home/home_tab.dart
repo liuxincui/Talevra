@@ -76,6 +76,7 @@ class _HomeTabState extends State<HomeTab> {
   bool _loading = true;
   String? _error;
   String _query = '';
+  String _subCategory = 'All';
   String? _lastSdkLanguage;
   final _search = TextEditingController();
 
@@ -167,41 +168,29 @@ class _HomeTabState extends State<HomeTab> {
     final visible = _dramas
         .where(
           (d) =>
-              _query.isEmpty ||
-              '${d.title} ${d.genre}'.toLowerCase().contains(
-                _query.toLowerCase(),
-              ),
+              (_subCategory == 'All' ||
+                  d.genre.toLowerCase().contains(_subCategory.toLowerCase())) &&
+              (_query.isEmpty ||
+                  '${d.title} ${d.genre}'.toLowerCase().contains(
+                    _query.toLowerCase(),
+                  )),
         )
         .toList();
     return DecoratedBox(
       decoration: const BoxDecoration(gradient: AppPalette.gradient),
       child: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            toolbarHeight: 56,
-            backgroundColor: const Color(0xFF0A0B0F),
-            titleSpacing: 16,
-            title: const Text(
-              'Talevra',
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
-            ),
-            actions: [
-              const SizedBox(width: 132, child: _BalancePill(coins: 72150)),
-              IconButton(
-                tooltip: 'Search',
-                onPressed: _showSearch,
-                icon: const Icon(Icons.search_rounded),
-              ),
-              const SizedBox(width: 4),
-            ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(48),
-              child: _ChannelBar(
-                categories: _categories,
-                selectedId: _categoryId,
-                onSelected: _loadDramas,
-              ),
+          SliverToBoxAdapter(
+            child: _HomeHeader(
+              onSearch: _showSearch,
+              categories: _categories,
+              selectedId: _categoryId,
+              onSelected: (id) {
+                setState(() => _subCategory = 'All');
+                _loadDramas(id);
+              },
+              subCategory: _subCategory,
+              onSubCategory: (value) => setState(() => _subCategory = value),
             ),
           ),
           SliverPadding(
@@ -260,7 +249,7 @@ class _HomeTabState extends State<HomeTab> {
                           mainAxisSpacing: 12,
                           // Reserve room for the poster, title and metadata so
                           // the card never paints past its grid cell.
-                          childAspectRatio: .50,
+                          childAspectRatio: .49,
                         ),
                     itemBuilder: (_, i) =>
                         _DramaCard(drama: visible[i], index: i),
@@ -506,6 +495,103 @@ class _BalancePill extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _HomeHeader extends StatelessWidget {
+  final VoidCallback onSearch;
+  final List<Map<Object?, Object?>> categories;
+  final int selectedId;
+  final ValueChanged<int> onSelected;
+  final String subCategory;
+  final ValueChanged<String> onSubCategory;
+
+  const _HomeHeader({
+    required this.onSearch,
+    required this.categories,
+    required this.selectedId,
+    required this.onSelected,
+    required this.subCategory,
+    required this.onSubCategory,
+  });
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    bottom: false,
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 10, 10),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Talevra',
+                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+                ),
+              ),
+              const SizedBox(width: 132, child: _BalancePill(coins: 72150)),
+              IconButton(
+                tooltip: 'Search',
+                onPressed: onSearch,
+                icon: const Icon(Icons.search_rounded, size: 27),
+              ),
+            ],
+          ),
+        ),
+        _ChannelBar(
+          categories: categories,
+          selectedId: selectedId,
+          onSelected: onSelected,
+        ),
+        _SubCategoryBar(selected: subCategory, onSelected: onSubCategory),
+      ],
+    ),
+  );
+}
+
+class _SubCategoryBar extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onSelected;
+  const _SubCategoryBar({required this.selected, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = [
+      'All',
+      'Romance',
+      'Revenge',
+      'CEO',
+      'Fantasy',
+      'Historical',
+      'Family',
+    ];
+    return SizedBox(
+      height: 35,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        scrollDirection: Axis.horizontal,
+        itemCount: labels.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 18),
+        itemBuilder: (_, index) {
+          final label = labels[index];
+          final active = label == selected;
+          return GestureDetector(
+            onTap: () => onSelected(label),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                  color: active ? Colors.white : Colors.white54,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _ChannelBar extends StatelessWidget {

@@ -68,52 +68,82 @@ class _HomePageState extends State<HomePage> {
     errorBuilder: (_, __, ___) => const Icon(Icons.circle_outlined),
   );
 
+  Widget _navIcon(String path, bool selected) => Container(
+    width: selected ? 58 : 48,
+    height: 34,
+    decoration: BoxDecoration(
+      color: selected ? const Color(0xFFFF00B8) : Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+    ),
+    alignment: Alignment.center,
+    child: _sliceIcon(path),
+  );
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: IndexedStack(index: _index, children: _tabs),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedDestination,
-        onDestinationSelected: _select,
-        destinations: [
-          NavigationDestination(
-            icon: _sliceIcon(
-              'assets/icons/home_off.png',
+      bottomNavigationBar: ColoredBox(
+        color: const Color(0xFF19002E),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 72,
+            child: Row(
+              children: [
+                _navItem(
+                  0,
+                  l.homeTab,
+                  'assets/icons/home_off.png',
+                  'assets/icons/home_on.png',
+                ),
+                _navItem(
+                  1,
+                  l.shortsTab,
+                  'assets/icons/watch_off.png',
+                  'assets/icons/watch_on.png',
+                ),
+                _navItem(
+                  2,
+                  l.rewardsTab,
+                  'assets/icons/gift_off.png',
+                  'assets/icons/gift_on.png',
+                ),
+                _navItem(
+                  3,
+                  l.profileTab,
+                  'assets/icons/mine_off.png',
+                  'assets/icons/mine_on.png',
+                ),
+              ],
             ),
-            selectedIcon: _sliceIcon(
-              'assets/icons/home_on.png',
-            ),
-            label: l.homeTab,
           ),
-          NavigationDestination(
-            icon: _sliceIcon(
-              'assets/icons/watch_off.png',
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(int index, String label, String off, String on) {
+    final selected = _selectedDestination == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () => _select(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _navIcon(selected ? on : off, selected),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: selected ? Colors.white : Colors.white70,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
-            selectedIcon: _sliceIcon(
-              'assets/icons/watch_on.png',
-            ),
-            label: l.shortsTab,
-          ),
-          NavigationDestination(
-            icon: _sliceIcon(
-              'assets/icons/gift_off.png',
-            ),
-            selectedIcon: _sliceIcon(
-              'assets/icons/gift_on.png',
-            ),
-            label: l.rewardsTab,
-          ),
-          NavigationDestination(
-            icon: _sliceIcon(
-              'assets/icons/mine_off.png',
-            ),
-            selectedIcon: _sliceIcon(
-              'assets/icons/mine_on.png',
-            ),
-            label: l.profileTab,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

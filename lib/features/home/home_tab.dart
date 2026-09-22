@@ -470,28 +470,28 @@ class _TaskProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 66,
+    height: 45,
     child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: 18,
+          height: 13,
           child: Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 9,
               color: Color(0xFF4FD7FF),
               fontWeight: FontWeight.w800,
             ),
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 2),
         SizedBox(
-          height: 45,
+          height: 30,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 7),
             decoration: BoxDecoration(
@@ -501,12 +501,12 @@ class _TaskProgress extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Image.asset('assets/icons/cash.png', width: 28, height: 28),
+                Image.asset('assets/icons/cash.png', width: 24, height: 24),
                 const Spacer(),
                 Text(
                   amount,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -538,7 +538,7 @@ class _HomeHeader extends StatelessWidget {
     child: Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
           child: Row(
             children: const [
               Expanded(
@@ -591,7 +591,7 @@ class _ChannelBar extends StatelessWidget {
     ];
     final items = categories.isEmpty ? fallback : categories;
     return SizedBox(
-      height: 48,
+      height: 35,
       child: Row(
         children: [
           Expanded(
@@ -613,14 +613,33 @@ class _ChannelBar extends StatelessWidget {
                 };
                 return InkWell(
                   onTap: () => onSelected(id),
-                  child: Center(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: active ? FontWeight.w900 : FontWeight.w500,
-                        color: active ? Colors.white : Colors.white70,
-                      ),
+                  child: SizedBox(
+                    height: 35,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: active
+                                ? FontWeight.w900
+                                : FontWeight.w500,
+                            color: active
+                                ? Colors.white
+                                : const Color(0xFF8D919B),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Container(
+                          width: active ? 30 : 0,
+                          height: 2,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF3D9E),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );

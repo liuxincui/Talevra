@@ -27,6 +27,7 @@ import android.view.ViewConfiguration;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.SeekBar;
+import org.json.JSONObject;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.NonNull;
@@ -877,6 +878,10 @@ public final class DramaversePlayActivity extends FragmentActivity {
         private TextView desc;
         private TextView choose;
         private TextView select;
+        private View rewardCapsule;
+        private TextView rewardBalance;
+        private TextView rewardNext;
+        private ProgressBar rewardProgress;
         private ShortPlay boundPlay;
         private ShortPlayFragment boundFragment;
 
@@ -887,6 +892,10 @@ public final class DramaversePlayActivity extends FragmentActivity {
             desc = findViewById(R.id.tv_overlay_drama_desc);
             choose = findViewById(R.id.tv_overlay_choose_index_title);
             select = findViewById(R.id.tv_overlay_select);
+            rewardCapsule = findViewById(R.id.reward_capsule);
+            rewardBalance = findViewById(R.id.tv_reward_balance);
+            rewardNext = findViewById(R.id.tv_reward_next);
+            rewardProgress = findViewById(R.id.pb_watch_reward);
             select.setText(text("select") + " ›");
             findViewById(R.id.btn_player_back).setContentDescription(text("back"));
             findViewById(R.id.btn_player_back).setOnClickListener(v -> finish());
@@ -905,6 +914,35 @@ public final class DramaversePlayActivity extends FragmentActivity {
             title.setText(play.title);
             desc.setVisibility(View.GONE);
             choose.setText(formatEpisode(index));
+            bindRewardCapsule(index);
+        }
+
+        private void bindRewardCapsule(int episode) {
+            int balance = 0;
+            int watched = Math.max(0, episode - 1);
+            try {
+                String ledger = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+                        .getString("flutter.earning.ledger.v2", null);
+                if (ledger != null) {
+                    JSONObject parsed = new JSONObject(ledger);
+                    balance = Math.max(0, parsed.optInt("coins", 0));
+                    if (parsed.optJSONArray("watchedEpisodeKeys") != null) {
+                        watched = Math.max(
+                                watched,
+                                parsed.optJSONArray("watchedEpisodeKeys").length());
+                    }
+                }
+            } catch (Exception ignored) {
+                // Keep the player usable when the local ledger is unavailable.
+            }
+            rewardBalance.setText(formatCoins(balance));
+            rewardNext.setText(text("watchReward"));
+            rewardProgress.setProgress(Math.min(100, watched * 10));
+            rewardCapsule.setVisibility(View.VISIBLE);
+        }
+
+        private String formatCoins(int value) {
+            return String.format(java.util.Locale.US, "%,d", value);
         }
         private void showEpisodePicker() {
             if (boundPlay == null || boundFragment == null) return;
@@ -952,6 +990,7 @@ public final class DramaversePlayActivity extends FragmentActivity {
             case "shareDrama": return localized("Share series", "Compartilhar série", "Compartir serie", "Bagikan serial", "作品をシェア", "작품 공유");
             case "like": return localized("Like", "Curtir", "Me gusta", "Suka", "いいね", "좋아요");
             case "collect": return localized("Save", "Salvar", "Guardar", "Simpan", "お気に入り", "즐겨찾기");
+            case "watchReward": return localized("Watch to earn", "Assista para ganhar", "Mira para ganar", "Tonton untuk mendapat", "視聴して獲得", "시청하고 적립");
             case "selectEpisode": return localized("Episodes", "Episódios", "Episodios", "Episode", "エピソード", "회차");
             case "select": return localized("Choose", "Escolher", "Elegir", "Pilih", "選択", "선택");
             case "back": return localized("Back", "Voltar", "Volver", "Kembali", "戻る", "뒤로");

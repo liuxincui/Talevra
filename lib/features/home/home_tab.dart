@@ -72,6 +72,7 @@ class _HomeTabState extends State<HomeTab> {
   static const _channel = MethodChannel('talevra/dramaverse');
   List<Map<Object?, Object?>> _categories = const [];
   List<Drama> _dramas = const [];
+  Map<String, List<Drama>> _categoryDramas = const {};
   int _categoryId = -2;
   bool _loading = true;
   String? _error;
@@ -123,6 +124,26 @@ class _HomeTabState extends State<HomeTab> {
       _categories =
           raw?.whereType<Map<Object?, Object?>>().toList() ?? const [];
       await _loadDramas(_categoryId);
+      final categoryEntries = _categories.where((item) {
+        final id = (item['id'] as num?)?.toInt() ?? 0;
+        return id > 0;
+      }).toList();
+      final loaded = await Future.wait(
+        categoryEntries.map((item) async {
+          final id = (item['id'] as num?)?.toInt() ?? 0;
+          final name = '${item['name'] ?? ''}'.trim();
+          return MapEntry(name, await DramaverseCatalog.dramas(categoryId: id));
+        }),
+      );
+      if (mounted) {
+        setState(
+          () => _categoryDramas = {
+            for (final entry in loaded)
+              if (entry.key.isNotEmpty && entry.value.isNotEmpty)
+                entry.key: entry.value,
+          },
+        );
+      }
     } on PlatformException catch (error) {
       if (mounted) {
         setState(() {
@@ -234,7 +255,10 @@ class _HomeTabState extends State<HomeTab> {
                     child: Center(child: Text(l.noStoriesFound)),
                   )
                 else
-                  _DramaSections(dramas: visible),
+                  _DramaSections(
+                    dramas: visible,
+                    sections: _categoryId == -2 ? _categoryDramas : const {},
+                  ),
               ]),
             ),
           ),
@@ -362,11 +386,10 @@ class _DramaCard extends StatelessWidget {
                 Positioned(
                   right: 5,
                   top: 5,
-                  child: Image.asset(
-                    'assets/icons/drama_cash.png',
-                    width: 25,
-                    height: 25,
-                    fit: BoxFit.contain,
+                  child: const Icon(
+                    Icons.local_fire_department_rounded,
+                    size: 20,
+                    color: AppPalette.yellow,
                   ),
                 ),
                 Positioned(
@@ -498,12 +521,7 @@ class _HomeHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 10, 10),
           child: Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Talevra',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
-                ),
-              ),
+              const Spacer(),
               const SizedBox(width: 132, child: _BalancePill(coins: 72150)),
             ],
           ),
@@ -591,7 +609,8 @@ class _ChannelBar extends StatelessWidget {
 
 class _DramaSections extends StatelessWidget {
   final List<Drama> dramas;
-  const _DramaSections({required this.dramas});
+  final Map<String, List<Drama>> sections;
+  const _DramaSections({required this.dramas, this.sections = const {}});
 
   static const _categories = [
     'Romance',
@@ -604,22 +623,31 @@ class _DramaSections extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sections = <({String name, List<Drama> dramas})>[];
-    for (final name in _categories) {
-      final matching = dramas
-          .where(
-            (drama) => drama.genre.toLowerCase().contains(name.toLowerCase()),
-          )
-          .take(8)
-          .toList();
-      if (matching.isNotEmpty) sections.add((name: name, dramas: matching));
+    final grouped = <({String name, List<Drama> dramas})>[];
+    if (sections.isNotEmpty) {
+      for (final entry in sections.entries) {
+        grouped.add((
+          name: localizedGenre(AppLocalizations.of(context)!, entry.key),
+          dramas: entry.value.take(8).toList(),
+        ));
+      }
+    } else {
+      for (final name in _categories) {
+        final matching = dramas
+            .where(
+              (drama) => drama.genre.toLowerCase().contains(name.toLowerCase()),
+            )
+            .take(8)
+            .toList();
+        if (matching.isNotEmpty) grouped.add((name: name, dramas: matching));
+      }
     }
-    if (sections.isEmpty) {
-      sections.add((name: 'For You', dramas: dramas.take(8).toList()));
+    if (grouped.isEmpty) {
+      grouped.add((name: 'For You', dramas: dramas.take(8).toList()));
     }
     return Column(
       children: [
-        for (final section in sections)
+        for (final section in grouped)
           _DramaSection(name: section.name, dramas: section.dramas),
       ],
     );

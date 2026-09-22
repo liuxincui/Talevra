@@ -46,60 +46,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         localeOverrideNotifier.value ?? Localizations.localeOf(context);
     final wallet = ref.watch(earningControllerProvider).wallet;
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppPalette.gradient),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment(0.45, 1),
+          colors: [Color(0xFF0A0B0F), Color(0xFF7B5024)],
+        ),
+      ),
       child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.fromLTRB(15, 83, 15, 24),
         children: [
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 22),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'LOGO',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'ID 6A982FB5342F39D5DD4CBE8',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: .65),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.account_circle_rounded,
-                    size: 42,
-                    color: Colors.white70,
-                  ),
-                ],
-              ),
-            ),
+          _CoinAssetCard(
+            coins: wallet?.coins ?? 0,
+            onTap: () => context.push('/earning'),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            child: _CoinAssetCard(
-              coins: wallet?.coins ?? 0,
-              onTap: () => context.push('/earning'),
-            ),
-          ),
+          const SizedBox(height: 22),
           _HistoryPreview(onTap: () => context.push('/player/feed?mode=feed')),
-          const SizedBox(height: 10),
           _ProfileRow(
-            icon: Icons.folder_open_outlined,
-            label: l.history,
-            onTap: () => context.push('/player/feed?mode=feed'),
+            asset:
+                'assets/ui_slices/主页_我的_slices/mipmap-mdpi/icon_mine_folder.png',
+            label: l.favorites,
+            onTap: () => context.push('/library?tab=favorites'),
           ),
           _ProfileRow(
             icon: Icons.help_outline,
@@ -392,15 +359,23 @@ class _HistoryPreview extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.history_rounded, size: 17),
+              Image.asset(
+                'assets/ui_slices/主页_我的_slices/mipmap-mdpi/icon_mine_history.png',
+                width: 28,
+                height: 28,
+              ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'My history',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  '观看历史',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 18),
+              Image.asset(
+                'assets/ui_slices/主页_我的_slices/mipmap-mdpi/icon_mine_sidemenu.png',
+                width: 22,
+                height: 22,
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -445,14 +420,14 @@ class _HistoryPreview extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             color: Colors.white.withValues(alpha: .8),
                           ),
                         ),
                         const Text(
                           'Episode 1',
                           style: TextStyle(
-                            fontSize: 8,
+                            fontSize: 11,
                             color: AppPalette.muted,
                           ),
                         ),
@@ -471,35 +446,45 @@ class _HistoryPreview extends StatelessWidget {
 
 class _ProfileRow extends StatelessWidget {
   final IconData icon;
+  final String? asset;
   final String label;
   final String? trailing;
   final VoidCallback onTap;
   const _ProfileRow({
-    required this.icon,
+    this.icon = Icons.chevron_right,
     required this.label,
     required this.onTap,
     this.trailing,
+    this.asset,
   });
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    dense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-    leading: Icon(icon, size: 20),
-    title: Text(label, style: const TextStyle(fontSize: 12)),
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (trailing != null)
-          Text(
-            trailing!,
-            style: const TextStyle(fontSize: 10, color: AppPalette.muted),
+  Widget build(BuildContext context) => SizedBox(
+    height: 60,
+    child: ListTile(
+      contentPadding: const EdgeInsets.only(left: 20, right: 20),
+      leading: asset == null
+          ? Icon(icon, size: 28)
+          : Image.asset(asset!, width: 28, height: 28),
+      title: Text(label, style: const TextStyle(fontSize: 16)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailing != null)
+            Text(
+              trailing!,
+              style: const TextStyle(fontSize: 12, color: Color(0xFFB5B8BE)),
+            ),
+          const SizedBox(width: 8),
+          Image.asset(
+            'assets/ui_slices/主页_我的_slices/mipmap-mdpi/icon_mine_sidemenu.png',
+            width: 22,
+            height: 22,
           ),
-        const SizedBox(width: 8),
-        const Icon(Icons.chevron_right, size: 18),
-      ],
+        ],
+      ),
+      onTap: onTap,
     ),
-    onTap: onTap,
   );
 }
 
@@ -510,68 +495,91 @@ class _CoinAssetCard extends StatelessWidget {
   const _CoinAssetCard({required this.coins, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Ink(
-        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE21BB7), Color(0xFF7B12D1)],
-          ),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x44000000),
-              blurRadius: 18,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
+  Widget build(BuildContext context) => SizedBox(
+    height: 180,
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Ink(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .18),
-                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFFE35B), Color(0xFFFFCB2D)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(color: Color(0xFFFFFC66), offset: Offset(0, 1)),
+                ],
               ),
-              child: const Icon(
-                Icons.monetization_on_rounded,
-                color: AppPalette.yellow,
-                size: 29,
-              ),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
                 children: [
-                  Text(
-                    AppLocalizations.of(context)!.availableBalance,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: .74),
-                      fontSize: 12,
+                  Positioned(
+                    left: 24,
+                    top: 17,
+                    child: Text(
+                      AppLocalizations.of(context)!.availableBalance,
+                      style: const TextStyle(
+                        color: Color(0xFFC16945),
+                        fontSize: 18,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    CoinTool.format(coins),
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
+                  Positioned(
+                    left: 24,
+                    top: 55.5,
+                    child: Text(
+                      'Rp ${CoinTool.format(coins)}',
+                      style: const TextStyle(
+                        color: Color(0xFF682204),
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 21,
+                    right: 21,
+                    bottom: 12,
+                    height: 56,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF3D82), Color(0xFFFF6567)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          AppLocalizations.of(context)!.withdraw,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white70),
-          ],
+          ),
         ),
-      ),
+        Positioned(
+          right: 12,
+          top: -34,
+          child: Image.asset(
+            'assets/ui_slices/主页_我的_slices/mipmap-mdpi/icon_wallet.png',
+            width: 91,
+            height: 91,
+          ),
+        ),
+      ],
     ),
   );
 }

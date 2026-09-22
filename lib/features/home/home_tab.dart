@@ -478,11 +478,13 @@ class _DramaCard extends StatelessWidget {
   );
 }
 
-class _TaskProgress extends StatelessWidget {
+/// Shared reward header used by the home surface and other Flutter surfaces.
+class HomeRewardProgress extends StatelessWidget {
   final String reward;
   final String dramaTitle;
   final String currency;
-  const _TaskProgress({
+  const HomeRewardProgress({
+    super.key,
     required this.reward,
     required this.dramaTitle,
     required this.currency,
@@ -602,13 +604,13 @@ class _HomeHeader extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _TaskProgress(
+              HomeRewardProgress(
                 reward: 'Rp 37.520',
                 dramaTitle: 'Title ABCD ABAG',
                 currency: currency,
               ),
               SizedBox(width: 8),
-              _TaskProgress(
+              HomeRewardProgress(
                 reward: 'Rp 37.520',
                 dramaTitle: 'Title ABCD ABAG',
                 currency: currency,

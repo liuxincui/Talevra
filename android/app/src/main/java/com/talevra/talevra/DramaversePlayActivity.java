@@ -912,7 +912,9 @@ public final class DramaversePlayActivity extends FragmentActivity {
             boundFragment = fragment;
             boundPlay = play;
             title.setText(play.title);
-            desc.setVisibility(View.GONE);
+            desc.setText(play.desc == null ? "" : play.desc);
+            desc.setVisibility(play.desc == null || play.desc.isEmpty()
+                    ? View.GONE : View.VISIBLE);
             choose.setText(formatEpisode(index));
             bindRewardCapsule(index);
         }

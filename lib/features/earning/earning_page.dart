@@ -51,157 +51,178 @@ class _EarningPageState extends ConsumerState<EarningPage> {
       ),
       child: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(15, 18, 15, 10),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  l?.rewardsTab ?? 'Rewards',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(earningControllerProvider.notifier).load(),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ActivityHero(
-                        coins: state.wallet?.coins ?? 955580,
-                        onWatch: () => context.push('/player/feed?mode=feed'),
-                      ),
-                      const SizedBox(height: 14),
-                      _CashoutCard(
-                        coins: state.wallet?.coins ?? 0,
-                        label: l?.availableBalance ?? 'Available balance',
-                        minimum: state.levels.isEmpty
-                            ? 1990000
-                            : state.levels.first.requiredCoins,
-                        minimumAmount: state.levels.isEmpty
-                            ? 1
-                            : state.levels.first.amountUsd,
-                        onWithdraw: () => _showWithdrawalLevels(state),
-                      ),
-                      const SizedBox(height: 14),
-                      _DailyProgress(
-                        episodes: state.todayEpisodeCount,
-                        episodeCap: state.config.watchGoals.last,
-                        ads: state.todayAdCount,
-                        adCap: state.config.videoDailyCap,
-                      ),
-                      const SizedBox(height: 14),
-                      _CheckInCard(
-                        streak: state.checkIn.streak,
-                        checked: state.checkIn.checkedToday,
-                        rewards: state.config.checkInCoins,
-                        onClaim: state.checkIn.checkedToday
-                            ? null
-                            : () => ref
-                                  .read(earningControllerProvider.notifier)
-                                  .performCheckIn(),
-                        label: l?.checkIn ?? 'Claim',
-                      ),
-                      const SizedBox(height: 16),
-                      _SpinCard(
-                        used: state.todaySpinCount,
-                        rewards: state.config.spinRewards,
-                        lastReward: state.lastSpinReward,
-                        busy: state.actionInProgress,
-                        onSpin: () =>
-                            ref.read(earningControllerProvider.notifier).spin(),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        l?.tasks ?? 'Tasks',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ...state.tasks
-                          .where((task) => task.visible)
-                          .map(
-                            (task) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _TaskCard(
-                                title: task.title,
-                                reward: task.reward,
-                                ratio: task.ratio,
-                                progress: task.progress,
-                                goal: task.goal,
-                                multiplier: task.multiplier,
-                                type: task.type,
-                                claimed: task.claimed,
-                                onPressed: _taskAction(state, task),
-                              ),
-                            ),
+        child: LayoutBuilder(
+          builder: (context, viewport) {
+            final side = (viewport.maxWidth * 15 / 393).clamp(12.0, 32.0);
+            final contentWidth = viewport.maxWidth.clamp(0.0, 1086.0);
+            return Center(
+              child: SizedBox(
+                width: contentWidth,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(side, 18, side, 10),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          l?.rewardsTab ?? 'Rewards',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w400,
                           ),
-                      if (state.loading)
-                        const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(child: CircularProgressIndicator()),
                         ),
-                      if (state.error != null)
-                        _RewardsUnavailableBanner(
-                          message:
-                              l?.rewardsUnavailable ??
-                              'Rewards are temporarily unavailable. Your other features still work.',
-                          retryLabel: l?.retry ?? 'Retry',
-                          onRetry: () => ref
-                              .read(earningControllerProvider.notifier)
-                              .load(),
-                        ),
-                      if (state.tasks.isEmpty && !state.loading) ...[
-                        const SizedBox(height: 12),
-                        const _TaskCard(
-                          title: 'Watch episodes & earn rewards',
-                          reward: 500,
-                          ratio: .4,
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      if (state.levels.isNotEmpty) ...[
-                        const SizedBox(height: 20),
-                        Text(
-                          l?.withdrawalLevels ?? 'Withdrawal levels',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: state.levels
-                              .map(
-                                (level) => _WithdrawalLevelChip(
-                                  amount: level.amountUsd,
-                                  requirement:
-                                      l?.daysCoins(
-                                        level.regDays,
-                                        CoinTool.format(level.requiredCoins),
-                                      ) ??
-                                      '${level.regDays} days · ${CoinTool.format(level.requiredCoins)} coins',
+                      ),
+                    ),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: () =>
+                            ref.read(earningControllerProvider.notifier).load(),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(side, 4, side, 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _ActivityHero(
+                                coins: state.wallet?.coins ?? 955580,
+                                onWatch: () =>
+                                    context.push('/player/feed?mode=feed'),
+                              ),
+                              const SizedBox(height: 14),
+                              _CashoutCard(
+                                coins: state.wallet?.coins ?? 0,
+                                label:
+                                    l?.availableBalance ?? 'Available balance',
+                                minimum: state.levels.isEmpty
+                                    ? 1990000
+                                    : state.levels.first.requiredCoins,
+                                minimumAmount: state.levels.isEmpty
+                                    ? 1
+                                    : state.levels.first.amountUsd,
+                                onWithdraw: () => _showWithdrawalLevels(state),
+                              ),
+                              const SizedBox(height: 14),
+                              _DailyProgress(
+                                episodes: state.todayEpisodeCount,
+                                episodeCap: state.config.watchGoals.last,
+                                ads: state.todayAdCount,
+                                adCap: state.config.videoDailyCap,
+                              ),
+                              const SizedBox(height: 14),
+                              _CheckInCard(
+                                streak: state.checkIn.streak,
+                                checked: state.checkIn.checkedToday,
+                                rewards: state.config.checkInCoins,
+                                onClaim: state.checkIn.checkedToday
+                                    ? null
+                                    : () => ref
+                                          .read(
+                                            earningControllerProvider.notifier,
+                                          )
+                                          .performCheckIn(),
+                                label: l?.checkIn ?? 'Claim',
+                              ),
+                              const SizedBox(height: 16),
+                              _SpinCard(
+                                used: state.todaySpinCount,
+                                rewards: state.config.spinRewards,
+                                lastReward: state.lastSpinReward,
+                                busy: state.actionInProgress,
+                                onSpin: () => ref
+                                    .read(earningControllerProvider.notifier)
+                                    .spin(),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                l?.tasks ?? 'Tasks',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 12),
+                              ...state.tasks
+                                  .where((task) => task.visible)
+                                  .map(
+                                    (task) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: _TaskCard(
+                                        title: task.title,
+                                        reward: task.reward,
+                                        ratio: task.ratio,
+                                        progress: task.progress,
+                                        goal: task.goal,
+                                        multiplier: task.multiplier,
+                                        type: task.type,
+                                        claimed: task.claimed,
+                                        onPressed: _taskAction(state, task),
+                                      ),
+                                    ),
+                                  ),
+                              if (state.loading)
+                                const Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
                                 ),
-                              )
-                              .toList(),
+                              if (state.error != null)
+                                _RewardsUnavailableBanner(
+                                  message:
+                                      l?.rewardsUnavailable ??
+                                      'Rewards are temporarily unavailable. Your other features still work.',
+                                  retryLabel: l?.retry ?? 'Retry',
+                                  onRetry: () => ref
+                                      .read(earningControllerProvider.notifier)
+                                      .load(),
+                                ),
+                              if (state.tasks.isEmpty && !state.loading) ...[
+                                const SizedBox(height: 12),
+                                const _TaskCard(
+                                  title: 'Watch episodes & earn rewards',
+                                  reward: 500,
+                                  ratio: .4,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (state.levels.isNotEmpty) ...[
+                                const SizedBox(height: 20),
+                                Text(
+                                  l?.withdrawalLevels ?? 'Withdrawal levels',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w900),
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: state.levels
+                                      .map(
+                                        (level) => _WithdrawalLevelChip(
+                                          amount: level.amountUsd,
+                                          requirement:
+                                              l?.daysCoins(
+                                                level.regDays,
+                                                CoinTool.format(
+                                                  level.requiredCoins,
+                                                ),
+                                              ) ??
+                                              '${level.regDays} days · ${CoinTool.format(level.requiredCoins)} coins',
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                      ],
-                    ],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

@@ -42,20 +42,26 @@ class _EarningPageState extends ConsumerState<EarningPage> {
     final state = ref.watch(earningControllerProvider);
     final l = AppLocalizations.of(context);
     return DecoratedBox(
-      decoration: const BoxDecoration(gradient: AppPalette.gradient),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment(0.45, 1),
+          colors: [Color(0xFF0A0B0F), Color(0xFF61323F)],
+        ),
+      ),
       child: SafeArea(
         bottom: false,
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 18, 14, 10),
+              padding: const EdgeInsets.fromLTRB(15, 18, 15, 10),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   l?.rewardsTab ?? 'Rewards',
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
@@ -74,7 +80,7 @@ class _EarningPageState extends ConsumerState<EarningPage> {
                         coins: state.wallet?.coins ?? 955580,
                         onWatch: () => context.push('/player/feed?mode=feed'),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       _CashoutCard(
                         coins: state.wallet?.coins ?? 0,
                         label: l?.availableBalance ?? 'Available balance',
@@ -86,14 +92,14 @@ class _EarningPageState extends ConsumerState<EarningPage> {
                             : state.levels.first.amountUsd,
                         onWithdraw: () => _showWithdrawalLevels(state),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       _DailyProgress(
                         episodes: state.todayEpisodeCount,
                         episodeCap: state.config.watchGoals.last,
                         ads: state.todayAdCount,
                         adCap: state.config.videoDailyCap,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       _CheckInCard(
                         streak: state.checkIn.streak,
                         checked: state.checkIn.checkedToday,
@@ -695,10 +701,12 @@ class _CheckInCard extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    constraints: const BoxConstraints(minHeight: 185),
+    padding: const EdgeInsets.fromLTRB(13, 14, 13, 12),
     decoration: BoxDecoration(
-      color: AppPalette.card,
-      borderRadius: BorderRadius.circular(8),
+      color: const Color(0xCC1C1615),
+      border: Border.all(color: const Color(0xFF463F2E)),
+      borderRadius: BorderRadius.circular(12),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -707,8 +715,8 @@ class _CheckInCard extends StatelessWidget {
           children: [
             const Expanded(
               child: Text(
-                'Consecutive Check-in Rewards',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                '签到&现金奖励',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
               ),
             ),
             Text(
@@ -717,55 +725,69 @@ class _CheckInCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Row(
           children: List.generate(
             7,
             (i) => Expanded(
-              child: Column(
-                children: [
-                  Text(
-                    'Day ${i + 1}',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: AppPalette.muted,
+              child: Container(
+                height: 56,
+                margin: EdgeInsets.only(right: i == 6 ? 0 : 4),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: i < streak
+                      ? const LinearGradient(
+                          colors: [Color(0xFFFF3D82), Color(0xFFFF6567)],
+                        )
+                      : null,
+                  color: i < streak ? null : const Color(0xF029201C),
+                  border: i < streak
+                      ? null
+                      : Border.all(color: const Color(0xFF6A6245)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.payments_rounded,
+                      size: 19,
+                      color: i < streak
+                          ? Colors.white
+                          : const Color(0xFFFFEC3D),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  CircleAvatar(
-                    radius: 17,
-                    backgroundColor: i < streak
-                        ? const Color(0xFF5B562C)
-                        : const Color(0xFF454349),
-                    child: Icon(
-                      i == 6 ? Icons.card_giftcard : Icons.payments_rounded,
-                      size: 18,
-                      color: AppPalette.yellow,
+                    const Spacer(),
+                    Text(
+                      CoinTool.format(rewards[i]),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: i < streak
+                            ? Colors.white
+                            : const Color(0xFFFFEC3D),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    CoinTool.format(rewards[i]),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
         const SizedBox(height: 15),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton(
-            onPressed: onClaim,
-            style: FilledButton.styleFrom(
-              backgroundColor: checked ? Colors.white24 : Colors.white,
-              foregroundColor: Colors.black,
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 49,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF3D82), Color(0xFFFF6567)],
+              ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(checked ? 'Claimed' : label),
+            child: TextButton(
+              onPressed: onClaim,
+              child: Text(checked ? '已签到' : '立刻查看'),
+            ),
           ),
         ),
       ],
@@ -796,10 +818,11 @@ class _TaskCard extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    constraints: const BoxConstraints(minHeight: 89),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
-      color: AppPalette.card,
-      borderRadius: BorderRadius.circular(8),
+      color: const Color(0xCC262124),
+      borderRadius: BorderRadius.circular(14),
     ),
     child: Row(
       children: [
@@ -826,17 +849,16 @@ class _TaskCard extends StatelessWidget {
                 title,
                 maxLines: 2,
                 style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(height: 5),
               Text(
                 '+${CoinTool.format(reward)} coins${multiplier > 0 ? ' · up to ${multiplier}x' : ''}',
                 style: const TextStyle(
-                  fontSize: 12,
-                  color: AppPalette.yellow,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: const Color(0xFFB5B8BE),
                 ),
               ),
               const SizedBox(height: 9),
@@ -857,9 +879,15 @@ class _TaskCard extends StatelessWidget {
         FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: AppPalette.yellow,
-            foregroundColor: Colors.black,
-            minimumSize: const Size(64, 46),
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(93, 37),
+            maximumSize: const Size(93, 37),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(26),
+            ),
+            side: BorderSide.none,
+            padding: EdgeInsets.zero,
           ),
           child: Text(
             claimed
